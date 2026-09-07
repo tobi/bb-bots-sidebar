@@ -1,0 +1,22 @@
+import { afterEach, expect, it } from "vitest";
+import { backend } from "./backend-fixture";
+import type { BotMetadata } from "../contract";
+const instances: Awaited<ReturnType<typeof backend>>[] = [];
+afterEach(async () => { await Promise.all(instances.splice(0).map(host => host.harness.lifecycle.dispose())); });
+it("saves an enrolled default machine atomically while preserving history and projects", async () => {
+  const host = await backend(); instances.push(host);
+  const bot = await host.create();
+  host.store.bind("old-main", bot.id);
+  host.store.save({ ...bot, mainThreadId: "old-main" });
+  host.harness.inspection.sdk.stub("hosts.list", async () => [{ id: "remote", name: "Remote", status: "disconnected" }]);
+  const update = { botId: bot.id, name: "New name", role: bot.role, avatar: bot.avatar, sectionId: bot.sectionId, linkedProjectIds: bot.linkedProjectIds, soul: bot.soul, expectedUpdatedAt: bot.updatedAt, expectedStateHashes: bot.stateHashes };
+  await expect(host.harness.behavior.callRpc("bot_update", { ...update, hostId: "missing" })).rejects.toThrow(/enrolled/);
+  expect(host.store.require(bot.id).name).toBe(bot.name);
+  const saved = await host.harness.behavior.callRpc("bot_update", { ...update, hostId: "remote" }) as BotMetadata;
+  expect(saved).toMatchObject({ hostId: "remote", name: "New name", mainThreadId: "old-main", linkedProjectIds: bot.linkedProjectIds, stateHashes: bot.stateHashes });
+  expect(host.store.owner("old-main")).toBe(bot.id);
+  await expect(host.harness.behavior.callRpc("bot_update", { ...update, hostId: "host-home" })).rejects.toThrow(/changed/);
+  await host.reload();
+  expect(host.store.require(bot.id).hostId).toBe("remote");
+  expect(host.harness.inspection.sdk.callsTo("projects.update")).toEqual([]);
+});

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bots Sidebar · Synthetic screenshots</title>
+<style>
+:root{font-family:system-ui,sans-serif;color:#e6edf3;background:#0c1117;color-scheme:dark}body{max-width:1320px;margin:auto;padding:32px 24px 64px}h1{font-size:32px;letter-spacing:-.8px;margin:0 0 10px}p{color:#aab7c7;line-height:1.6;margin:0 0 28px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}figure{margin:0;border:1px solid #293442;border-radius:12px;padding:16px;background:#111923}figcaption{font-size:15px;font-weight:600;margin-bottom:14px}a{display:block;color:inherit}img{display:block;max-width:100%;width:auto;height:300px;object-fit:contain;object-position:top left}small{display:block;color:#9dacbd;margin-top:12px;font-size:12px}.badge{display:inline-block;padding:5px 10px;border-radius:20px;background:#163a32;color:#a5e7ce;font-size:12px;margin-bottom:16px}
+</style>
+<header><span class="badge">Synthetic demo data only</span><h1>Bots Sidebar screenshots</h1><p>Fictional bots, projects, conversations, and machine labels. Click any image to open it at full resolution.</p></header>
+<screenshot-gallery></screenshot-gallery>
+<script type="module">
+import {LitElement,html} from 'https://esm.sh/lit@3';
+const images=[
+ ['audit-machine-dropdown.png','Machine selector','Synthetic machine names; no live workspace in the background.'],
+ ['audit-create-menu.png','Create menu','Fictional Atlas and Nova bots.'],
+ ['audit-conversation-hover.png','Archive on hover','Fictional conversation titles; component-only capture.'],
+ ['bot-soul-only.png','Bot instructions','Example SOUL text; no private identity or memory.'],
+ ['bot-memory-limit.png','Memory limit','Dummy text demonstrates the 3,000-character limit.'],
+ ['bot-state.png','Private state editor','Synthetic example preferences.'],
+ ['sidebar.png','Sidebar trees','Demo conversations and sections.'],
+ ['bot-activity.png','Activity indicator','Main and other conversation activity.'],
+ ['conversation-drop.png','Drag to assign','Synthetic assignment preview.'],
+ ['conversation-hover.png','Conversation archive','Inline archive control.'],
+ ['bot-create.png','Create a bot','Fictional Research buddy.'],
+ ['bot-editor.png','Edit a bot','Fictional Atlas configuration.'],
+ ['bot-instructions.png','Instructions editor','Example persona text.'],
+ ['bot-projects.png','Project membership','Demo project roles.'],
+ ['bot-new-project.png','Create a linked project','Generic example folder.'],
+ ['project-create.png','Standalone project creation','Generic example project and folder.'],
+ ['bot-appearance.png','Appearance choices','Example avatar styles.'],
+ ['create-menu.png','Creation actions','Bot, section, and project actions.'],
+];
+class ScreenshotGallery extends LitElement{createRenderRoot(){return this}render(){return html`<div class="grid">${images.map(([file,title,caption])=>html`<figure><figcaption>${title}</figcaption><a href=${file}><img src=${file} alt=${title} loading="lazy"></a><small>${caption}</small></figure>`)}</div>`}}
+customElements.define('screenshot-gallery',ScreenshotGallery);
+</script>
+<noscript><p>JavaScript is needed for the gallery. <a href="audit-machine-dropdown.png">Open the synthetic machine-selector screenshot.</a></p></noscript>
+</html>
