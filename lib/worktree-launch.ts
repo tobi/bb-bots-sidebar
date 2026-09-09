@@ -1,5 +1,5 @@
 import type { NewThreadRequest, PluginSidebarThread } from "@get-bb/plugin-sdk/app";
-import type { BotMetadata } from "../contract";
+import type { BotMetadata, ProjectOwner } from "../contract";
 
 // Host NewThreadComposer only seeds the environment picker when hostId is set
 // (`newThreadEnvironmentArgsToSeed` returns null otherwise). This action always
@@ -32,6 +32,21 @@ export function conversationLaunchProjectId(
     if (context && workProjects.some((project) => project.id === context.projectId)) return context.projectId;
   }
   return workProjects[0]?.id ?? null;
+}
+
+// A generic new chat follows ownership, not membership or whichever project
+// happens to be active. Multiple owned projects use main context, then link order.
+export function ownedConversationProjectId({ bot, projects, owners, personalProjectId, main }: {
+  bot: Pick<BotMetadata, "id" | "linkedProjectIds" | "legacyHomeProjectId">;
+  projects: ReadonlyArray<{ id: string }>;
+  owners: readonly ProjectOwner[];
+  personalProjectId: string | null;
+  main?: Pick<PluginSidebarThread, "projectId"> | null;
+}): string | null {
+  const available = new Set(projects.filter(project => project.id !== personalProjectId && project.id !== bot.legacyHomeProjectId).map(project => project.id));
+  const owned = new Set(owners.filter(owner => owner.botId === bot.id && available.has(owner.projectId)).map(owner => owner.projectId));
+  if (main && owned.has(main.projectId)) return main.projectId;
+  return bot.linkedProjectIds.find(id => owned.has(id)) ?? projects.find(project => owned.has(project.id))?.id ?? null;
 }
 
 export function conversationDraftKey(input: {

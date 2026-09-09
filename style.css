@@ -153,6 +153,13 @@
   max-width: min(18rem, calc(100vw - 24px));
   pointer-events: none;
 }
+.bot-new-conversation { opacity: 0; pointer-events: none; }
+.project-row:hover > .bot-new-conversation,
+.project-row:has(:focus-visible) > .bot-new-conversation,
+.bot-new-conversation:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
 .conversation-archive { opacity: 0; pointer-events: none; }
 .thread-row:hover > .conversation-archive,
 .thread-row:has(:focus-visible) > .conversation-archive,
@@ -163,7 +170,7 @@
   pointer-events: auto;
 }
 @media (hover: none), (pointer: coarse) {
-  .conversation-archive { opacity: 1; pointer-events: auto; }
+  .conversation-archive, .bot-new-conversation { opacity: 1; pointer-events: auto; }
 }
 .thread-row[aria-current="page"],
 .recent-row[aria-current="page"] {

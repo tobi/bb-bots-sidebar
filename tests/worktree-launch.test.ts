@@ -6,12 +6,39 @@ import {
   worktreeLaunchHostId,
   conversationLaunchProjectId,
   projectLaunchEnvironment,
+  ownedConversationProjectId,
 } from "../lib/worktree-launch";
 
 const workProjects = [{ id: "project" }, { id: "second" }, { id: "unrelated" }];
 const remote = thread("topic", 10, { host: { id: "remote", name: "Remote" } });
 const mainRemote = thread("main", 100, { host: { id: "main-host", name: "Main" } });
 const personal = thread("personal-topic", 9, { projectId: personalProjectId, host: { id: "origin-host", name: "Origin" } });
+
+describe("owned-project defaults", () => {
+  const context = { bot: { ...bot, linkedProjectIds: ["second", "project"] }, projects: workProjects, personalProjectId };
+  const owners = [{ botId: bot.id, projectId: "project" }, { botId: bot.id, projectId: "second" }];
+
+  it("prefers an owned main project, otherwise stable linked-project order", () => {
+    expect(ownedConversationProjectId({ ...context, owners, main: mainRemote })).toBe("project");
+    expect(ownedConversationProjectId({ ...context, owners, main: personal })).toBe("second");
+    expect(ownedConversationProjectId({ ...context, owners })).toBe("second");
+  });
+
+  it("does not treat membership, another bot's ownership, or active project as ownership", () => {
+    expect(ownedConversationProjectId({ ...context, owners: [{ botId: "other", projectId: "project" }], main: mainRemote })).toBeNull();
+    expect(ownedConversationProjectId({ ...context, owners: [] })).toBeNull();
+  });
+
+  it("ignores unavailable, personal and legacy-home projects", () => {
+    const projects = [...workProjects, { id: personalProjectId }, { id: "legacy" }];
+    expect(ownedConversationProjectId({ ...context, bot: { ...context.bot, legacyHomeProjectId: "legacy" }, projects,
+      owners: ["missing", personalProjectId, "legacy"].map(projectId => ({ botId: bot.id, projectId })) })).toBeNull();
+  });
+
+  it("uses available ownership if the membership snapshot is incomplete", () => {
+    expect(ownedConversationProjectId({ ...context, bot: { ...bot, linkedProjectIds: [] }, owners, personalProjectId: null })).toBe("project");
+  });
+});
 
 describe("worktree launch", () => {
   it("prefers the clicked conversation machine over main and bot hosts", () => {

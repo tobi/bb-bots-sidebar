@@ -13,8 +13,9 @@ restoring an older metadata format.
 Private state design: use the plugin SQLite database as the durable authority,
 with private per-bot Markdown/JSON exports under its own data directory. Embed
 identity/instructions/memory into agent context; tools infer bot ID from explicit
-thread bindings. Ordinary bot chats use the personal project with a normal personal
-workspace. No new backing projects, no state files in user repositories. Preserve
+thread bindings. Bot chats use personal workspaces or explicit work projects;
+new-chat defaults follow project ownership without changing storage location.
+No new backing projects, no state files in user repositories. Preserve
 existing conversation histories and track legacy home project IDs for compatibility.
 
 ## Plugin identity
@@ -93,6 +94,14 @@ or reintroduce hover toolbars when making unrelated changes.
   Portaled dropdown/context-menu Content needs `usePortalScopeProps()` so scoped
   plugin CSS applies. Highlight Radix `data-highlighted` for mouse and keyboard;
   keep disabled entries unhighlighted. Verify computed styles in the browser.
+- Each bot row has ONE inline + before its main-child disclosure, shown on hover
+  or keyboard focus and always available on touch. Reserve its width; no layout
+  shift or overlay toolbar. Keep it separate from opening main, disclosures, and
+  bot reordering. Use BB Button/Tooltip. + and New conversation use an available
+  owned project (owned main project first, then linked order), otherwise personal.
+  Membership alone never chooses the default. Refresh ownership before opening;
+  use the bot's configured host and preserve composer overrides after opening.
+  Main creation/move-main retain their existing personal-workspace behavior.
 - Bot settings (avatar, role, SOUL, section) belong in **Edit bot**. Menus are
   opened only by right-click/keyboard context-menu actions.
 - Reorder bots and move them between sections by dragging; never add arrow
@@ -131,8 +140,9 @@ or reintroduce hover toolbars when making unrelated changes.
   the page is hidden; dispose on unmount. Still/reduced-motion suppress random
   bursts but retain static long-idle poses. Do not poll or call any write RPC.
 - All three New conversation actions open the SAME native composer popup directly.
-  Never restore a separate project pre-select/Continue screen. Seed personal workspace
-  for ordinary chat, the selected host's checkout for project chat, and a fresh
+  Never restore a separate project pre-select/Continue screen. Use ownership-aware
+  defaults for the generic new-chat action, the selected host's checkout for
+  explicit project chat, and a fresh
   managed worktree for worktree chat. Use row context or the main's still-linked
   project, then linked-first available fallback. The native project picker stays
   editable; hold seeds stable after opening so refreshes cannot reset user choices.

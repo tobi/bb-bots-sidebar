@@ -35,12 +35,13 @@ async function mount() {
   return slot;
 }
 
-it("keeps one open-main button per bot even on hover/focus; settings exist only in the menu/editor", async () => {
+it("keeps one open-main button and one inline new-chat button; settings remain in the menu/editor", async () => {
   const slot = await mount();
   const row = slot.getByText("Bot one").closest<HTMLElement>(".project-row")!;
   fireEvent.mouseEnter(row);
-  fireEvent.focus(within(row).getByRole("button"));
-  expect(within(row).getAllByRole("button")).toHaveLength(1);
+  fireEvent.focus(within(row).getByRole("button", { name: /^Bot one/ }));
+  expect(within(row).getAllByRole("button")).toHaveLength(2);
+  expect(within(row).getByRole("button", { name: "New conversation with Bot one" })).toBeTruthy();
   expect(row.draggable).toBe(true);
   expect(slot.container.querySelector(".project-row-actions")).toBeNull();
   expect(slot.queryByRole("menu")).toBeNull();

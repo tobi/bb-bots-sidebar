@@ -5,8 +5,9 @@ avatar, operating instructions, memory, and linked projects. Its state stays
 private in BB and follows its conversations through embedded instructions and
 bot-scoped tools.
 
-Ordinary bot conversations are projectless. Explicit project/worktree starts can
-choose any available work project and join the selected bot to it. Creating a bot never creates a
+New conversations default to a project the bot owns, or to a personal workspace
+when it owns none. Explicit project/worktree starts can choose any available work
+project and join the selected bot to it. Creating a bot never creates a
 backing BB project or writes `SOUL.md` into a repository.
 
 ## Preview
@@ -16,6 +17,7 @@ synthetic data; private-session captures do not belong in published assets.
 
 Demo data only: [Sidebar](docs/screenshots/sidebar.png) ·
 [Activity badge](docs/screenshots/bot-activity.png) ·
+[Bot new-conversation action](docs/screenshots/bot-new-chat-hover.png) ·
 [Hover archive](docs/screenshots/conversation-hover.png) ·
 [Drag to assign](docs/screenshots/conversation-drop.png) ·
 [Create bot](docs/screenshots/bot-create.png) ·
@@ -132,9 +134,14 @@ in bot state.
 - Click a bot to open its main conversation and show all active top-level
   conversation trees first, plus up to **five inactive** trees. Remaining inactive
   conversations sit behind **N Other**; active work never consumes the five slots.
-  Right-click for a new projectless
-  conversation, project/worktree work, Edit, visibility,
+  Right-click for a new conversation, project/worktree work, Edit, visibility,
   and Move main. Existing main/history stays intact until replacement is sent.
+- Hover a bot row to reveal **+** (also available on keyboard focus and touch).
+  It opens the native composer without opening main or expanding children.
+  **+** and **New conversation…** default to an owned project on the bot's configured
+  machine. With multiple owned projects, prefer the main's project if owned, then
+  the first owned project in link order. Mere membership does not change the
+  personal-workspace default. The project and machine remain editable.
 - Drag an unassigned conversation from **Chats** onto a bot, or use **Assign to
   bot…** from its menu. Any bot can be chosen; it joins the conversation's work
   project as a member if needed. Projectless chats need no project link. History,
@@ -173,9 +180,10 @@ in bot state.
   Random bursts pause in hidden windows and are disabled by Still/reduced motion.
   Machine is an execution default, never the state storage location.
 - All **New conversation** actions open the same native composer popup immediately,
-  without a separate project-selection step. Ordinary chat starts projectless;
-  **in project** selects a checkout; **in worktree** selects a fresh worktree.
-  The current work context or a linked project is preselected, and you can change
+  without a separate project-selection step. **+** / **New conversation…** use
+  ownership-aware defaults; **in project** selects a checkout; **in worktree**
+  selects a fresh worktree. For explicit project/worktree actions, the current
+  work context or a linked project is preselected, and you can change
   the project, machine, and harness inside the popup before sending.
 - **New conversation in worktree…** selects a fresh managed worktree on the
   originating conversation's machine (or the bot's main/default machine), never

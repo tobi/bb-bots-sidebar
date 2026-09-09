@@ -35,6 +35,7 @@ import { RenameConversationDialog } from "@/components/rename-conversation-dialo
 import { ConversationStatusIcon } from "@/components/conversation-status-icon";
 import { BotActivityBadge } from "@/components/bot-activity-badge";
 import { ConversationArchiveButton } from "@/components/conversation-archive-button";
+import { BotNewConversationButton } from "@/components/bot-new-conversation-button";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ResizableChats } from "@/components/resizable-chats";
 import { ConversationDialog } from "@/components/conversation-dialog";
@@ -47,7 +48,7 @@ import { BotProjectsPanel } from "./components/bot-projects-panel";
 import { ProjectCreateDialog } from "./components/project-create-dialog";
 import type { ProjectCreationActions } from "./components/project-create-form";
 import { usePortalScopeProps } from "./lib/portal-scope";
-import { conversationLaunchProjectId, projectLaunchEnvironment, worktreeLaunchEnvironment, worktreeLaunchHostId } from "./lib/worktree-launch";
+import { conversationLaunchProjectId, ownedConversationProjectId, projectLaunchEnvironment, worktreeLaunchEnvironment, worktreeLaunchHostId } from "./lib/worktree-launch";
 import { randomAvatar } from "./lib/appearance";
 import { AvatarAppearance } from "./components/avatar-appearance";
 import { BotIcon } from "./components/bot-icon";
@@ -457,6 +458,7 @@ function BotGroup({
             <span className="block truncate text-[10px] leading-4 text-muted-foreground">{conversationDropTarget ? "Drop to assign conversation" : latestTitle}</span>
           </span>
         </button>
+        <BotNewConversationButton name={metadata.name} onClick={onNewConversation} />
         <BranchToggle title={metadata.name} count={mainChildren.length} expanded={mainChildrenExpanded} childrenId={mainChildrenId} onToggle={() => setMainChildrenExpanded((current) => !current)} />
       </div>
       </RowContextMenu>
@@ -657,14 +659,30 @@ function BotsSidebar({ activeThreadId, onNavigate }: PluginThreadListProps) {
     if (preparing.current) return;
     preparing.current = true;
     try {
-      const prepared = await rpc.call("bot_prepare", { botId: bot.id });
-      refresh();
+      let prepared = await rpc.call("bot_prepare", { botId: bot.id });
+      let personalId = personalProjectId;
+      let ownedProjectId: string | null = null;
+      if (!makeMain) {
+        // Refresh ownership at the action boundary, then keep the composer seed
+        // stable. Later realtime updates must not reset the user's choices.
+        const snapshot = await refresh();
+        if (!snapshot) throw new Error("Could not read current project roles. Try again.");
+        const current = snapshot.bots.find(entry => entry.id === bot.id);
+        if (!current) throw new Error("Bot no longer exists.");
+        if (current.updatedAt >= prepared.updatedAt) prepared = current;
+        personalId = snapshot.personalProjectId;
+        ownedProjectId = ownedConversationProjectId({ bot: prepared, projects: snapshot.projects, owners: snapshot.projectOwners ?? [], personalProjectId: personalId, main: sidebar.threads.find(row => row.id === prepared.mainThreadId) });
+      } else void refresh();
       if (openExistingMain && prepared.mainThreadId) {
         navigate.toThread(prepared.mainThreadId); onNavigate(); return;
       }
       if (!prepared.stateReady) throw new Error("The bot’s private state could not be prepared. Try again.");
-      if (!personalProjectId) throw new Error("BB’s personal project is not available. Refresh and try again.");
-      setConversation({ bot: prepared, kind: "bot", projectId: personalProjectId, environment: { type: "host", hostId: prepared.hostId, workspace: { type: "personal" } }, makeMain });
+      if (ownedProjectId) {
+        setConversation({ bot: prepared, kind: "project", projectId: ownedProjectId, environment: projectLaunchEnvironment(prepared.hostId), makeMain: false });
+        return;
+      }
+      if (!personalId) throw new Error("BB’s personal project is not available. Refresh and try again.");
+      setConversation({ bot: prepared, kind: "bot", projectId: personalId, environment: { type: "host", hostId: prepared.hostId, workspace: { type: "personal" } }, makeMain });
     } finally { preparing.current = false; }
   }
 

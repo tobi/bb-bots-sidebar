@@ -21,7 +21,10 @@ vi.mock("@get-bb/plugin-sdk/app", async (importOriginal) => {
   } };
 });
 const app = await loadPluginApp(() => import("../app"));
-afterEach(() => { cleanup(); composer.props = null; });
+afterEach(async () => {
+  cleanup(); composer.props = null;
+  await new Promise(resolve => setTimeout(resolve, 0));
+});
 
 type Binding = { botId: string; threadId: string };
 async function mount({
@@ -124,7 +127,7 @@ describe("independent bot identities", () => {
     const { slot } = await mount({ bots: [newBot], rows: [thread("unassigned", 100)], bindings: [], activeThreadId: "unassigned" });
     expect(slot.getByText("Solo bot")).toBeTruthy();
     expect(slot.queryByRole("button", { name: /hidden/ })).toBeNull();
-    fireEvent.click(slot.getByRole("button", { name: /Solo bot/ }));
+    fireEvent.click(slot.getByRole("button", { name: /^Solo bot/ }));
     await slot.findByRole("dialog", { name: "New main conversation" });
     expect(slot.inspection.rpcCalls).toContainEqual({ method: "bot_prepare", input: { botId: "solo" } });
     expect(composer.props?.defaultProjectId).toBe(personalProjectId);
@@ -139,7 +142,7 @@ describe("independent bot identities", () => {
 
   it.each(["missing", "archived"])("offers a new projectless main for a %s main without replacing it before send", async (kind) => {
     const { slot } = await mount({ rows: kind === "missing" ? [] : [thread("main", 100, { isArchived: true })], activeThreadId: null });
-    fireEvent.click(slot.getByRole("button", { name: /Test bot/ }));
+    fireEvent.click(slot.getByRole("button", { name: /^Test bot/ }));
     await slot.findByRole("dialog", { name: "Move main conversation" });
     expect(composer.props?.defaultProjectId).toBe(personalProjectId);
     expect(composer.props?.defaultEnvironment).toEqual(personalEnvironment);
@@ -152,14 +155,14 @@ describe("independent bot identities", () => {
 
   it("opens a visible unarchived main through the host sidebar action", async () => {
     const { slot } = await mount();
-    fireEvent.click(slot.getByRole("button", { name: /Test bot/ }));
+    fireEvent.click(slot.getByRole("button", { name: /^Test bot/ }));
     expect(slot.inspection.sidebarActionCalls).toContainEqual({ method: "open", threadId: "main" });
     expect(slot.inspection.rpcCalls.some((call) => call.method === "bot_prepare")).toBe(false);
   });
 
   it("navigates directly when preparation discovers a concurrent main outside the sidebar cache", async () => {
     const { slot } = await mount({ bots: [{ ...bot, mainThreadId: null, stateReady: false }], rows: [], bindings: [], preparedMainThreadId: "concurrent-main" });
-    fireEvent.click(slot.getByRole("button", { name: /Test bot/ }));
+    fireEvent.click(slot.getByRole("button", { name: /^Test bot/ }));
     await waitFor(() => expect(slot.inspection.navigateCalls).toContainEqual({ method: "toThread", threadId: "concurrent-main" }));
     expect(slot.inspection.sidebarActionCalls).toEqual([]);
     expect(slot.queryByRole("dialog")).toBeNull();
@@ -301,7 +304,7 @@ describe("independent bot identities", () => {
     await slot.findByText("Private state temporarily unavailable");
     expect(slot.queryByRole("dialog")).toBeNull();
     expect(slot.getByText("Retry bot")).toBeTruthy();
-    fireEvent.click(slot.getByRole("button", { name: /Retry bot/ }));
+    fireEvent.click(slot.getByRole("button", { name: /^Retry bot/ }));
     await slot.findByRole("dialog", { name: "New main conversation" });
     expect(slot.inspection.rpcCalls.filter((call) => call.method === "bot_create")).toHaveLength(1);
     expect(slot.inspection.rpcCalls.filter((call) => call.method === "bot_prepare")).toEqual([
@@ -402,7 +405,7 @@ describe("independent bot identities", () => {
   it("preserves a legacy main pointer/history but uses the personal project for fresh Move main", async () => {
     const legacy = { ...bot, legacyHomeProjectId: "legacy-project" };
     const { slot } = await mount({ bots: [legacy], rows: [thread("main", 100, { projectId: "legacy-project" })] });
-    fireEvent.click(slot.getByRole("button", { name: /Test bot/ }));
+    fireEvent.click(slot.getByRole("button", { name: /^Test bot/ }));
     expect(slot.inspection.sidebarActionCalls).toContainEqual({ method: "open", threadId: "main" });
     await menu(slot, bot.name, "Move main…");
     await slot.findByRole("dialog", { name: "Move main conversation" });

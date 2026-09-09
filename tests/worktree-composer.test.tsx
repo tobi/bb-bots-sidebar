@@ -22,7 +22,11 @@ vi.mock("@get-bb/plugin-sdk/app", async (importOriginal) => {
   } };
 });
 const app = await loadPluginApp(() => import("../app"));
-afterEach(() => { cleanup(); composer.props = null; });
+afterEach(async () => {
+  cleanup(); composer.props = null;
+  // Radix defers focus restoration; drain it before JSDOM's Event realm closes.
+  await new Promise(resolve => setTimeout(resolve, 0));
+});
 
 const fresh = (hostId: string) => worktreeLaunchEnvironment(hostId);
 
