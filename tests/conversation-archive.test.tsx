@@ -30,7 +30,7 @@ it.each([false, true])("archives the requested parent through BB without navigat
   expect(row.lastElementChild).toBe(disclosure); expect(archive.nextElementSibling).toBe(disclosure);
   fireEvent.click(archive, { ctrlKey: true });
   expect(slot.inspection.sidebarActionCalls).toEqual([{ method: "archive", threadId: "root" }]);
-  expect(disclosure.getAttribute("aria-expanded")).toBe("false");
+  expect(slot.container.querySelector('[data-sidebar-thread-id="root"]')).toBeNull();
   expect(onNavigate).not.toHaveBeenCalled(); expect(slot.inspection.navigateCalls).toEqual([]);
   expect(slot.inspection.rpcCalls.map(call => call.method)).toEqual(["bots_list"]);
 });
@@ -40,7 +40,8 @@ it.each([false, true])("gives each expanded child its own archive action (Chats=
   fireEvent.click(slot.getByRole("button", { name: "Expand children of Conversation root" }));
   fireEvent.click(slot.getByRole("button", { name: "Archive Conversation child" }));
   expect(slot.inspection.sidebarActionCalls).toEqual([{ method: "archive", threadId: "child" }]);
-  expect(slot.getByRole("button", { name: "Collapse children of Conversation root" }).getAttribute("aria-expanded")).toBe("true");
+  expect(slot.queryByText("Conversation child")).toBeNull();
+  expect(slot.queryByRole("button", { name: /children of Conversation root/ })).toBeNull();
 });
 
 it.each([false, true])("supports archiving overflow rows without opening a conversation (Chats=%s)", async (personal) => {

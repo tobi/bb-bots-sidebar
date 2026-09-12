@@ -320,6 +320,36 @@ export default async function plugin(bb: BbPluginApi) {
         publish(); return { threadId: thread.id };
       });
     },
+    conversation_fork: async ({ botId, sourceThreadId, request }) => serial(botId, async () => {
+      const bot = await state.prepare(botId);
+      const source = await bb.sdk.threads.get({ threadId: sourceThreadId });
+      if (source.archivedAt !== null || source.deletedAt !== null) throw new Error("The source conversation is archived or deleted.");
+      if (await resolveOwner(sourceThreadId, false) !== botId) throw new Error("The source conversation does not belong to this bot.");
+      if (request.environment.type !== "reuse" || !source.environmentId) throw new Error("Forks must reuse the source conversation’s environment.");
+      if (request.environment.environmentId !== source.environmentId) throw new Error("The fork environment must match the source conversation.");
+      if (request.projectId !== source.projectId) throw new Error("Forks must stay in the source project.");
+      const thread = await bb.sdk.threads.fork({ sourceThreadId, environment: request.environment, input: request.input, permissionMode: request.permissionMode });
+      store.bind(thread.id, bot.id);
+      publish();
+      return { threadId: thread.id };
+    }),
+    conversation_nest: ({ threadId, parentThreadId }) => serial("registry", async () => {
+      if (threadId === parentThreadId) throw new Error("A conversation cannot be nested under itself.");
+      const thread = await bb.sdk.threads.get({ threadId });
+      const parent = await bb.sdk.threads.get({ threadId: parentThreadId });
+      if (thread.archivedAt !== null || thread.deletedAt !== null || parent.archivedAt !== null || parent.deletedAt !== null) throw new Error("Archived conversations cannot be nested.");
+      const seen = new Set<string>([threadId]);
+      let current: string | null = parent.parentThreadId;
+      while (current) {
+        if (seen.has(current)) throw new Error("That nesting would create a cycle.");
+        seen.add(current);
+        const ancestor = await bb.sdk.threads.get({ threadId: current });
+        current = ancestor.parentThreadId;
+      }
+      await bb.sdk.threads.update({ threadId, parentThreadId });
+      publish();
+      return { ok: true } as const;
+    }),
     conversation_assign: ({ botId, threadId }) => serial("registry", () => serial(botId, async () => {
       const bot = store.require(botId); const thread = await bb.sdk.threads.get({ threadId });
       const existing = await resolveOwner(threadId, false);

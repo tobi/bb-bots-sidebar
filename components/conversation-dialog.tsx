@@ -8,10 +8,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 
 export type ConversationTarget = {
   bot: BotMetadata;
-  kind: "bot" | "project" | "worktree";
+  kind: "bot" | "project" | "worktree" | "fork";
   projectId: string;
   environment: NewThreadRequest["environment"];
   makeMain: boolean;
+  sourceThreadId?: string;
 };
 
 export function ConversationDialog({ target, onClose, onCreate }: {
@@ -26,11 +27,13 @@ export function ConversationDialog({ target, onClose, onCreate }: {
   const [error, setError] = useState<string | null>(null);
   const submitting = useRef(false);
   const movingMain = target.makeMain && target.bot.mainThreadId !== null;
-  const title = target.makeMain ? (movingMain ? "Move main conversation" : "New main conversation") : target.kind === "bot" ? "New conversation" : target.kind === "worktree" ? "New conversation in worktree" : "New conversation in project";
+  const title = target.makeMain ? (movingMain ? "Move main conversation" : "New main conversation") : target.kind === "bot" ? "New conversation" : target.kind === "worktree" ? "New conversation in worktree" : target.kind === "fork" ? "Fork conversation" : "New conversation in project";
   const description = target.kind === "bot"
     ? `Chat with ${target.bot.name} without a project. ${movingMain ? "The existing main stays in place until you send; its history is kept." : "Choose the machine and harness before sending."}`
     : target.kind === "worktree"
       ? "Start in a fresh worktree. Choose the branch and harness before sending."
+      : target.kind === "fork"
+        ? "Continue this conversation in the same BB environment."
       : "Start in the project checkout. Change the project, machine, or harness here before sending.";
   return <Dialog open onOpenChange={(open) => { if (!open && !submitting.current) onClose(); }}>
     <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl" onOpenAutoFocus={(event) => event.preventDefault()}>

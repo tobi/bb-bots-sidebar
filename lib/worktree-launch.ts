@@ -51,7 +51,7 @@ export function ownedConversationProjectId({ bot, projects, owners, personalProj
 
 export function conversationDraftKey(input: {
   botId: string;
-  kind: "bot" | "project" | "worktree";
+  kind: "bot" | "project" | "worktree" | "fork";
   makeMain: boolean;
   projectId: string;
   environment: NewThreadRequest["environment"];

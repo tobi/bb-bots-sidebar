@@ -345,25 +345,26 @@ function BranchToggle({ title, count, expanded, childrenId, onToggle }: { title:
   </button> : null;
 }
 
-function ThreadRow({ thread, childrenByParent, activePath, actions, activeThreadId, onNavigate, onMakeMain, onNewInWorktree }: {
-  thread: PluginSidebarThread; childrenByParent: Map<string, PluginSidebarThread[]>; activePath: Set<string>; actions: PluginSidebarThreadActions; activeThreadId: string | null; onNavigate: () => void; onMakeMain: (thread: PluginSidebarThread) => void; onNewInWorktree: (thread: PluginSidebarThread) => void;
+function ThreadRow({ thread, childrenByParent, activePath, actions, activeThreadId, onNavigate, onMakeMain, onNewInWorktree, onFork, onNest, onArchive }: {
+  thread: PluginSidebarThread; childrenByParent: Map<string, PluginSidebarThread[]>; activePath: Set<string>; actions: PluginSidebarThreadActions; activeThreadId: string | null; onNavigate: () => void; onMakeMain: (thread: PluginSidebarThread) => void; onNewInWorktree: (thread: PluginSidebarThread) => void; onFork: (thread: PluginSidebarThread) => void; onNest: (threadId: string, parentThreadId: string) => void; onArchive: (threadId: string) => void;
 }) {
   const split = experimental_useSidebarThreadSplit(thread.id);
   const children = childrenByParent.get(thread.id) ?? [];
   const branch = useConversationBranch(thread.id, activeThreadId, activePath);
   const title = thread.title ?? thread.titleFallback ?? "Untitled conversation";
-  return <li><ConversationContextMenu thread={thread} actions={actions} onNavigate={onNavigate} items={[
+  return <li data-thread-drop-target={thread.id} onDragOver={(event) => { if (event.dataTransfer.types.includes("application/x-bb-thread-id")) event.preventDefault(); }} onDrop={(event) => { event.preventDefault(); event.stopPropagation(); const source = event.dataTransfer.getData("application/x-bb-thread-id"); if (source && source !== thread.id) onNest(source, thread.id); }}><ConversationContextMenu thread={thread} actions={actions} onNavigate={onNavigate} items={[
     { label: "New conversation in worktree…", action: () => onNewInWorktree(thread) },
+    { label: "Fork in same environment…", action: () => onFork(thread) },
     { label: "Make main conversation", action: () => onMakeMain(thread) },
   ]}>
-    <div className="thread-row flex min-h-7 items-center rounded-md text-xs text-muted-foreground hover:bg-state-hover hover:text-foreground" aria-current={activeThreadId === thread.id ? "page" : undefined} data-active-descendant={!branch.expanded && branch.containsActive}>
+    <div draggable onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("application/x-bb-thread-id", thread.id); }} className="thread-row flex min-h-7 items-center rounded-md text-xs text-muted-foreground hover:bg-state-hover hover:text-foreground" aria-current={activeThreadId === thread.id ? "page" : undefined} data-active-descendant={!branch.expanded && branch.containsActive}>
       <a {...split.splitProps} ref={branch.rowRef} role="link" tabIndex={0} aria-current={activeThreadId === thread.id ? "page" : undefined} onKeyDown={(event) => { if (event.key === "Enter") { actions.open(thread.id, { split: event.metaKey || event.ctrlKey }); onNavigate(); } }} data-sidebar-thread-shortcut-target="" data-sidebar-thread-id={thread.id} className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 py-1 pr-1" onClick={(event) => { event.preventDefault(); actions.open(thread.id, { split: event.metaKey || event.ctrlKey }); onNavigate(); }}>
         <ConversationStatusIcon thread={thread} /><span className="min-w-0 flex-1 truncate">{title}</span>
       </a>
-      <ConversationArchiveButton thread={thread} actions={actions} />
+      <ConversationArchiveButton thread={thread} actions={actions} onArchive={onArchive} />
       <BranchToggle title={title} count={children.length} expanded={branch.expanded} childrenId={branch.childrenId} onToggle={branch.toggle} />
     </div>
-  </ConversationContextMenu>{children.length ? <ul id={branch.childrenId} className="conversation-children" hidden={!branch.expanded}>{branch.expanded ? children.map((child) => <ThreadRow key={child.id} thread={child} childrenByParent={childrenByParent} activePath={activePath} actions={actions} activeThreadId={activeThreadId} onNavigate={onNavigate} onMakeMain={onMakeMain} onNewInWorktree={onNewInWorktree} />) : null}</ul> : null}</li>;
+  </ConversationContextMenu>{children.length ? <ul id={branch.childrenId} className="conversation-children" hidden={!branch.expanded}>{branch.expanded ? children.map((child) => <ThreadRow key={child.id} thread={child} childrenByParent={childrenByParent} activePath={activePath} actions={actions} activeThreadId={activeThreadId} onNavigate={onNavigate} onMakeMain={onMakeMain} onNewInWorktree={onNewInWorktree} onFork={onFork} onNest={onNest} onArchive={onArchive} />) : null}</ul> : null}</li>;
 }
 
 function BotGroup({
@@ -381,6 +382,9 @@ function BotGroup({
   onNavigate,
   onMakeMain,
   onNewInWorktree,
+  onFork,
+  onNest,
+  onArchive,
   onNewConversation,
   onNewInProject,
   hasWorkProjects,
@@ -405,6 +409,9 @@ function BotGroup({
   onNavigate: () => void;
   onMakeMain: (thread: PluginSidebarThread) => void;
   onNewInWorktree: (thread?: PluginSidebarThread) => void;
+  onFork: (thread: PluginSidebarThread) => void;
+  onNest: (threadId: string, parentThreadId: string) => void;
+  onArchive: (threadId: string) => void;
   onNewConversation: () => void;
   onNewInProject: () => void;
   hasWorkProjects: boolean;
@@ -428,7 +435,7 @@ function BotGroup({
     previousMain.current = metadata.mainThreadId;
     if (mainChanged || mainContainsActive || !selected) setMainChildrenExpanded(mainContainsActive);
   }, [activeThreadId, metadata.mainThreadId, mainContainsActive, selected]);
-  const renderThread = (thread: PluginSidebarThread) => <ThreadRow key={thread.id} thread={thread} childrenByParent={childrenByParent} activePath={activePath} actions={actions} activeThreadId={activeThreadId} onNavigate={onNavigate} onMakeMain={onMakeMain} onNewInWorktree={onNewInWorktree} />;
+  const renderThread = (thread: PluginSidebarThread) => <ThreadRow key={thread.id} thread={thread} childrenByParent={childrenByParent} activePath={activePath} actions={actions} activeThreadId={activeThreadId} onNavigate={onNavigate} onMakeMain={onMakeMain} onNewInWorktree={onNewInWorktree} onFork={onFork} onNest={onNest} onArchive={onArchive} />;
   const botSelected = selected || threads.some((thread) => thread.id === activeThreadId);
   const latest = [...threads].sort((a, b) => b.updatedAt - a.updatedAt)[0];
   const latestTitle = latest?.title ?? latest?.titleFallback ?? metadata.role;
@@ -485,6 +492,7 @@ function RecentRow({
   onNavigate,
   onAssign,
   onConversationDrag,
+  onArchive,
   draggingThreadId,
 }: {
   thread: PluginSidebarThread;
@@ -495,6 +503,7 @@ function RecentRow({
   onNavigate: () => void;
   onAssign: (thread: PluginSidebarThread) => void;
   onConversationDrag: (thread: PluginSidebarThread, event: ReactPointerEvent<HTMLElement>) => void;
+  onArchive: (threadId: string) => void;
   draggingThreadId: string | null;
 }) {
   const split = experimental_useSidebarThreadSplit(thread.id);
@@ -533,11 +542,11 @@ function RecentRow({
           <span className="block truncate text-[8px] leading-[10px] text-muted-foreground">{detail}</span>
         </span>
       </a>
-      <ConversationArchiveButton thread={thread} actions={actions} />
+      <ConversationArchiveButton thread={thread} actions={actions} onArchive={onArchive} />
       <BranchToggle title={title} count={children.length} expanded={branch.expanded} childrenId={branch.childrenId} onToggle={branch.toggle} />
       </div>
       </ConversationContextMenu>
-      {children.length ? <ul id={branch.childrenId} className="conversation-children" hidden={!branch.expanded}>{branch.expanded ? children.map((child) => <RecentRow key={child.id} thread={child} childrenByParent={childrenByParent} activePath={activePath} actions={actions} activeThreadId={activeThreadId} onNavigate={onNavigate} onAssign={onAssign} onConversationDrag={onConversationDrag} draggingThreadId={draggingThreadId} />) : null}</ul> : null}
+      {children.length ? <ul id={branch.childrenId} className="conversation-children" hidden={!branch.expanded}>{branch.expanded ? children.map((child) => <RecentRow key={child.id} thread={child} childrenByParent={childrenByParent} activePath={activePath} actions={actions} activeThreadId={activeThreadId} onNavigate={onNavigate} onAssign={onAssign} onConversationDrag={onConversationDrag} draggingThreadId={draggingThreadId} onArchive={onArchive} />) : null}</ul> : null}
     </li>
   );
 }
@@ -565,6 +574,7 @@ function BotsSidebar({ activeThreadId, onNavigate }: PluginThreadListProps) {
   const [sectionPending, setSectionPending] = useState(false);
   const [editingSection, setEditingSection] = useState<BotSection | null>(null);
   const [shownTopicBots, setShownTopicBots] = useState<Set<string>>(() => new Set());
+  const [locallyArchived, setLocallyArchived] = useState<Set<string>>(() => new Set());
   const [draggedBotId, setDraggedBotId] = useState<string | null>(null);
   const preparing = useRef(false);
   const projectCatalog = JSON.stringify(sidebar.projects.map(({ id, name, isPersonal }) => [id, name, isPersonal]));
@@ -607,6 +617,10 @@ function BotsSidebar({ activeThreadId, onNavigate }: PluginThreadListProps) {
 
   function reportError(cause: unknown) { setActionError(cause instanceof Error ? cause.message : String(cause)); }
   function run(action: () => Promise<unknown>) { setActionError(null); void action().catch(reportError); }
+  function archiveThread(threadId: string) { setLocallyArchived((current) => new Set(current).add(threadId)); }
+  function nestConversation(threadId: string, parentThreadId: string) {
+    run(async () => { await rpc.call("conversation_nest", { threadId, parentThreadId }); await refresh(); });
+  }
 
   async function assignConversation(thread: PluginSidebarThread, botId: string) {
     if (owners.has(thread.id)) throw new Error("This conversation has already been assigned. Refresh and try again.");
@@ -714,6 +728,12 @@ function BotsSidebar({ activeThreadId, onNavigate }: PluginThreadListProps) {
     setConversation({ bot, kind, projectId, environment, makeMain: false });
   }
 
+  function openFork(bot: BotMetadata, source: PluginSidebarThread) {
+    const environmentId = source.environment?.id;
+    if (!environmentId) { setActionError("This conversation has no reusable environment."); return; }
+    setConversation({ bot, kind: "fork", projectId: source.projectId, environment: { type: "reuse", environmentId }, makeMain: false, sourceThreadId: source.id });
+  }
+
   async function openMain(bot: BotMetadata) {
     const visibleMain = bot.mainThreadId && sidebar.threads.some((thread) => thread.id === bot.mainThreadId && !thread.isArchived);
     if (visibleMain) { actions.open(bot.mainThreadId!); onNavigate(); }
@@ -723,10 +743,10 @@ function BotsSidebar({ activeThreadId, onNavigate }: PluginThreadListProps) {
   }
 
   const chatsTree = useMemo(() => conversationTree(
-    sidebar.threads.filter((thread) => !owners.has(thread.id)),
+    sidebar.threads.filter((thread) => !owners.has(thread.id) && !locallyArchived.has(thread.id)),
     null, activeThreadId, 8,
-  ), [sidebar.threads, owners, activeThreadId]);
-  const renderChat = (thread: PluginSidebarThread) => <RecentRow key={thread.id} thread={thread} childrenByParent={chatsTree.childrenByParent} activePath={chatsTree.activePath} actions={actions} activeThreadId={activeThreadId} onNavigate={onNavigate} onAssign={setAssigning} onConversationDrag={(row, event) => { if (!owners.has(row.id) && !assignmentRequests.current.has(row.id)) conversationDrop.begin(row, event); }} draggingThreadId={conversationDrop.drag?.threadId ?? null} />;
+  ), [sidebar.threads, owners, activeThreadId, locallyArchived]);
+  const renderChat = (thread: PluginSidebarThread) => <RecentRow key={thread.id} thread={thread} childrenByParent={chatsTree.childrenByParent} activePath={chatsTree.activePath} actions={actions} activeThreadId={activeThreadId} onNavigate={onNavigate} onAssign={setAssigning} onConversationDrag={(row, event) => { if (!owners.has(row.id) && !assignmentRequests.current.has(row.id)) conversationDrop.begin(row, event); }} draggingThreadId={conversationDrop.drag?.threadId ?? null} onArchive={archiveThread} />;
   return (
     <TooltipProvider>
     <div className="bots-sidebar flex h-full min-h-0 flex-col overflow-hidden px-1.5 pb-1.5" data-conversation-dragging={Boolean(conversationDrop.drag)}>
@@ -755,7 +775,7 @@ function BotsSidebar({ activeThreadId, onNavigate }: PluginThreadListProps) {
             {section.id === null && section.bots.length === 0 && draggedBotId ? <div className="rounded border border-dashed border-border px-2 py-2 text-[10px] text-muted-foreground">Move to Main</div> : null}
             <div className="space-y-px">{section.bots.map((metadata, index) => {
               const botId = metadata.id;
-              const botThreads = (threadsByBot.get(botId) ?? []).filter((thread) => !thread.isArchived);
+              const botThreads = (threadsByBot.get(botId) ?? []).filter((thread) => !thread.isArchived && !locallyArchived.has(thread.id));
               return <div key={botId} onDragOver={(event) => { if (draggedBotId && draggedBotId !== botId) event.preventDefault(); }} onDrop={(event) => {
                 event.preventDefault(); event.stopPropagation();
                 const bounds = event.currentTarget.querySelector(".project-row")?.getBoundingClientRect() ?? event.currentTarget.getBoundingClientRect();
@@ -772,6 +792,7 @@ function BotsSidebar({ activeThreadId, onNavigate }: PluginThreadListProps) {
                 onNewInProject={() => openLinked(metadata, "project")}
                 hasWorkProjects={availableWorkProjects(projects, metadata, personalProjectId).length > 0}
                 onNewInWorktree={(thread) => openLinked(metadata, "worktree", thread)}
+                onFork={(thread) => openFork(metadata, thread)} onNest={nestConversation} onArchive={archiveThread}
                 onMoveMain={() => { if (conversation?.bot.id === botId && conversation.makeMain) setConversation(null); else run(() => openBotConversation(metadata, true)); }} movingMain={conversation?.bot.id === botId && conversation.makeMain}
                 onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", botId); setDraggedBotId(botId); }}
                 onDragEnd={() => setDraggedBotId(null)} dragging={draggedBotId === botId} conversationDropTarget={conversationDrop.drag?.botId === botId} onNavigate={onNavigate} /></div>;
@@ -793,8 +814,8 @@ function BotsSidebar({ activeThreadId, onNavigate }: PluginThreadListProps) {
         onNavigate();
       }}>
         <ul>
-          {chatsTree.recent.map(renderChat)}
-          {chatsTree.other.length ? <li><button type="button" className="flex min-h-7 w-full items-center gap-1 rounded-md px-1 text-left text-[10px] text-muted-foreground hover:bg-state-hover" aria-expanded={showOtherChats} aria-controls={chatsOtherId} onClick={() => setShowOtherChats((current) => !current)}><span className={showOtherChats ? "rotate-90" : ""}><TinyIcon name="chevron" /></span>{chatsTree.other.length} Other</button><ul id={chatsOtherId} hidden={!showOtherChats}>{showOtherChats ? chatsTree.other.map(renderChat) : null}</ul></li> : null}
+          {chatsTree.recent.filter((thread) => !locallyArchived.has(thread.id)).map(renderChat)}
+          {chatsTree.other.length ? <li><button type="button" className="flex min-h-7 w-full items-center gap-1 rounded-md px-1 text-left text-[10px] text-muted-foreground hover:bg-state-hover" aria-expanded={showOtherChats} aria-controls={chatsOtherId} onClick={() => setShowOtherChats((current) => !current)}><span className={showOtherChats ? "rotate-90" : ""}><TinyIcon name="chevron" /></span>{chatsTree.other.length} Other</button><ul id={chatsOtherId} hidden={!showOtherChats}>{showOtherChats ? chatsTree.other.filter((thread) => !locallyArchived.has(thread.id)).map(renderChat) : null}</ul></li> : null}
         </ul>
       </ResizableChats>
       {editingSection ? <RenameConversationDialog title={editingSection.name} heading="Rename section" description="Choose the section name shown in the sidebar." onClose={() => setEditingSection(null)} onSave={async (name) => {
@@ -809,7 +830,9 @@ function BotsSidebar({ activeThreadId, onNavigate }: PluginThreadListProps) {
         if (!allowsConversationProject(request.projectId, bot, personalProjectId, projects)) {
           throw new Error("Choose no project or an available work project.");
         }
-        const { threadId } = await rpc.call("conversation_create", { botId: bot.id, request, makeMain: conversation.makeMain });
+        const { threadId } = conversation.kind === "fork"
+          ? await rpc.call("conversation_fork", { botId: bot.id, sourceThreadId: conversation.sourceThreadId!, request })
+          : await rpc.call("conversation_create", { botId: bot.id, request, makeMain: conversation.makeMain });
         setConversation(null); refresh();
         navigate.toThread(threadId);
         onNavigate();
