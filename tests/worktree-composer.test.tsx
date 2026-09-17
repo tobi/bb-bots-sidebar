@@ -82,7 +82,7 @@ describe("new conversation in worktree", () => {
 
   it("seeds a fresh worktree on the clicked conversation machine and never reuses its environment", async () => {
     const slot = await mount({
-      rows: [thread("main", 100), thread("0", 90, { host: { id: "remote", name: "Remote" }, environment: { id: "env-existing", name: null, branchName: "feature", workspaceDisplayKind: "managed-worktree" } })],
+      rows: [thread("main", 100), thread("0", 90, { host: { id: "remote", name: "Remote" }, environment: { id: "env-existing", name: null, branchName: "feature", workspaceDisplayKind: "managed-worktree", providerId: "pi" } })],
     });
     fireEvent.contextMenu(slot.getByText("Conversation 0"));
     fireEvent.click(await slot.findByRole("menuitem", { name: "New conversation in worktree…" }));
