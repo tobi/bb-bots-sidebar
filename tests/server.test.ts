@@ -58,6 +58,23 @@ describe("private bot identities", () => {
     expect(host.harness.inspection.sdk.callsTo("projects.create")).toEqual([]);
   });
 
+  it("accepts BB 0.43 provider-supplied environments (personal-workspace / project-checkout)", async () => {
+    // BB 0.43 routes personal-workspace and project-checkout environments
+    // through registered environment providers, so the composer submits a
+    // `provider` environment instead of the legacy `host`/`personal` shape.
+    // Rejecting it at the RPC boundary broke every bot conversation_create
+    // with "rpc input validation failed".
+    const host = await setup(); const bot = await host.create();
+    const providerRequest: ReturnType<typeof request> = {
+      ...request(PERSONAL_ID),
+      environment: { type: "provider", environmentProviderId: "environment-personal-workspace", machine: { type: "existing", hostId: "host-home" }, inputs: null },
+    };
+    const created = await host.harness.behavior.callRpc("conversation_create", { botId: bot.id, request: providerRequest }) as { threadId: string };
+    expect(created.threadId).toBeTruthy();
+    const submitted = host.harness.inspection.sdk.callsTo("threads.spawn")[0]![0] as { environment: unknown };
+    expect(submitted.environment).toEqual(providerRequest.environment);
+  });
+
   it("preserves schedules and ownership across reload", async () => {
     const host = await setup(); const bot = await host.create(); const when = Date.now() + 86_400_000;
     const created = await host.harness.behavior.callRpc("conversation_create", { botId: bot.id, request: { ...request(PERSONAL_ID), sendAt: when }, makeMain: true }) as { threadId: string };

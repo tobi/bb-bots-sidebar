@@ -22,6 +22,20 @@ const input = z.discriminatedUnion("type", [
 const environment = z.discriminatedUnion("type", [
   z.object({ type: z.literal("reuse"), environmentId: id }).strict(),
   z.object({ type: z.literal("project-default") }).strict(),
+  // BB 0.43 routes personal-workspace and project-checkout environments
+  // through registered environment providers, so the composer submits a
+  // `provider` environment instead of the legacy `host`/`personal` shape.
+  // Rejecting it here broke every bot conversation_create with
+  // "rpc input validation failed".
+  z.object({
+    type: z.literal("provider"),
+    environmentProviderId: id,
+    machine: z.discriminatedUnion("type", [
+      z.object({ type: z.literal("existing"), hostId: id }).strict(),
+      z.object({ type: z.literal("new"), machineProviderId: id, inputs: z.json().nullable().default(null) }).strict(),
+    ]).optional(),
+    inputs: z.json().nullable().default(null),
+  }).strict(),
   z.object({
     type: z.literal("host"), hostId: id.optional(),
     workspace: z.discriminatedUnion("type", [

@@ -7,7 +7,7 @@ export function thread(id: string, updatedAt: number, overrides: Partial<PluginS
     originKind: null, originPluginId: null, providerId: "pi", hasPendingInteraction: false,
     activity: { workflows: 0, backgroundAgents: 0, backgroundCommands: 0, planMode: 0, goals: 0 },
     indicator: "none", indicatorLabel: null, isUnread: false, isPinned: false, isArchived: false,
-    environment: { id: "env-existing", name: null, branchName: "feature", workspaceDisplayKind: "managed-worktree" },
+    environment: { id: "env-existing", name: null, branchName: "feature", workspaceDisplayKind: "managed-worktree", providerId: "pi" },
     host: { id: "host", name: "Local" }, createdAt: 1, updatedAt, lastReadAt: updatedAt, latestAttentionAt: updatedAt,
     ...overrides,
   };
