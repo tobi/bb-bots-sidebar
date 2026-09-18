@@ -16,6 +16,24 @@ function legacyRecord() {
 }
 
 describe("private bot identities", () => {
+  it.each([
+    { type: "existing", hostId: "host-gb300" },
+    { type: "new", machineProviderId: "test-machines", inputs: { size: "gpu", options: [true, null, 2] } },
+    undefined,
+  ] as const)("forwards provider environments and machine selection unchanged (%j)", async (machine) => {
+    const host = await setup(); const bot = await host.create();
+    const environment = {
+      type: "provider", environmentProviderId: "test-workspace",
+      inputs: { path: "/work/project", branch: { name: "main" } },
+      ...(machine ? { machine } : {}),
+    };
+    await host.harness.behavior.callRpc("conversation_create", {
+      botId: bot.id, request: { ...request("project"), environment },
+    });
+    expect(host.harness.inspection.sdk.callsTo("threads.spawn")[0]?.[0]).toMatchObject({ environment });
+    expect((host.harness.inspection.sdk.callsTo("threads.spawn")[0]?.[0] as { environment: unknown }).environment).toEqual(environment);
+  });
+
   it("creates private ID-keyed state without projects or execution-host filesystem writes", async () => {
     const host = await setup(); const bot = await host.create("Atlas", []);
     expect(bot.stateReady).toBe(true);
