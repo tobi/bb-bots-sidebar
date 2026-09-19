@@ -74,6 +74,7 @@ async function mount({
     },
   });
   await waitFor(() => expect(slot.queryByText("Loading bots…")).toBeNull());
+  for (const toggle of slot.queryAllByRole("button", { name: /^Expand conversations for / })) fireEvent.click(toggle);
   return { slot, onNavigate };
 }
 
@@ -111,7 +112,7 @@ describe("independent bot identities", () => {
     expect(slot.queryByText("Brand new unrelated project")).toBeNull();
     expect(slot.queryByText("Legacy backing project")).toBeNull();
     expect(secondGroup.querySelector('[aria-current="page"]')).toBeNull();
-    await menu(slot, second.name, "Show topics");
+    // Both bot lists were explicitly expanded in the fixture.
     expect(within(secondGroup).getByText("Conversation second-root")).toBeTruthy();
     expect(within(secondGroup).getByText("Conversation explicit-override")).toBeTruthy();
     expect(within(secondGroup).queryByText("Conversation first-root")).toBeNull();
@@ -128,7 +129,7 @@ describe("independent bot identities", () => {
     expect(slot.getByText("Solo bot")).toBeTruthy();
     expect(slot.queryByRole("button", { name: /hidden/ })).toBeNull();
     fireEvent.click(slot.getByRole("button", { name: /^Solo bot/ }));
-    await slot.findByRole("dialog", { name: "New main conversation" });
+    await slot.findByRole("dialog", { name: "New conversation" });
     expect(slot.inspection.rpcCalls).toContainEqual({ method: "bot_prepare", input: { botId: "solo" } });
     expect(composer.props?.defaultProjectId).toBe(personalProjectId);
     expect(composer.props?.defaultEnvironment).toEqual(personalEnvironment);
@@ -136,21 +137,21 @@ describe("independent bot identities", () => {
     // The personal project comes from bots_list, not the sidebar project cache.
     expect(slot.inspection.rpcCalls.map((call) => call.method)).toEqual(["bots_list", "bot_prepare", "bots_list"]);
     await act(() => composer.props!.onSubmit(personalRequest));
-    expect(slot.inspection.rpcCalls).toContainEqual({ method: "conversation_create", input: { botId: "solo", makeMain: true, request: personalRequest } });
+    expect(slot.inspection.rpcCalls).toContainEqual({ method: "conversation_create", input: { botId: "solo", makeMain: false, request: personalRequest } });
     expect(slot.inspection.rpcCalls.some((call) => call.method === "main_set")).toBe(false);
   });
 
   it.each(["missing", "archived"])("offers a new projectless main for a %s main without replacing it before send", async (kind) => {
     const { slot } = await mount({ rows: kind === "missing" ? [] : [thread("main", 100, { isArchived: true })], activeThreadId: null });
     fireEvent.click(slot.getByRole("button", { name: /^Test bot/ }));
-    await slot.findByRole("dialog", { name: "Move main conversation" });
+    await slot.findByRole("dialog", { name: "New conversation" });
     expect(composer.props?.defaultProjectId).toBe(personalProjectId);
     expect(composer.props?.defaultEnvironment).toEqual(personalEnvironment);
     expect(slot.inspection.sidebarActionCalls).toEqual([]);
     expect(slot.inspection.navigateCalls).toEqual([]);
     expect(slot.inspection.rpcCalls.some((call) => call.method === "main_set" || call.method === "conversation_create")).toBe(false);
     await act(() => composer.props!.onSubmit(personalRequest));
-    expect(slot.inspection.rpcCalls).toContainEqual({ method: "conversation_create", input: { botId: bot.id, request: personalRequest, makeMain: true } });
+    expect(slot.inspection.rpcCalls).toContainEqual({ method: "conversation_create", input: { botId: bot.id, request: personalRequest, makeMain: false } });
   });
 
   it("opens a visible unarchived main through the host sidebar action", async () => {
@@ -160,25 +161,26 @@ describe("independent bot identities", () => {
     expect(slot.inspection.rpcCalls.some((call) => call.method === "bot_prepare")).toBe(false);
   });
 
-  it("navigates directly when preparation discovers a concurrent main outside the sidebar cache", async () => {
+  it("does not navigate to a stale special main outside the visible list", async () => {
     const { slot } = await mount({ bots: [{ ...bot, mainThreadId: null, stateReady: false }], rows: [], bindings: [], preparedMainThreadId: "concurrent-main" });
     fireEvent.click(slot.getByRole("button", { name: /^Test bot/ }));
-    await waitFor(() => expect(slot.inspection.navigateCalls).toContainEqual({ method: "toThread", threadId: "concurrent-main" }));
+    await slot.findByRole("dialog", { name: "New conversation" });
+    expect(slot.inspection.navigateCalls).toEqual([]);
     expect(slot.inspection.sidebarActionCalls).toEqual([]);
-    expect(slot.queryByRole("dialog")).toBeNull();
+    expect(slot.getByRole("dialog", { name: "New conversation" })).toBeTruthy();
     expect(slot.inspection.rpcCalls.some((call) => call.method === "main_set" || call.method === "conversation_create")).toBe(false);
   });
 
-  it("uses explicit makeMain when moving main and preserves all composer execution/input choices", async () => {
+  it("starts an ordinary conversation and preserves all composer execution/input choices", async () => {
     const { slot, onNavigate } = await mount();
-    await menu(slot, bot.name, "Move main…");
-    await slot.findByRole("dialog", { name: "Move main conversation" });
+    await menu(slot, bot.name, "New conversation…");
+    await slot.findByRole("dialog", { name: "New conversation" });
     expect(slot.inspection.rpcCalls.some((call) => call.method === "main_set" || call.method === "conversation_create")).toBe(false);
     expect(composer.props?.defaultProjectId).toBe(personalProjectId);
     expect(composer.props?.defaultEnvironment).toEqual(personalEnvironment);
     const chosen = { ...request, serviceTier: "fast" as const, sendAt: 1234567890 };
     await act(() => composer.props!.onSubmit(chosen));
-    expect(slot.inspection.rpcCalls).toContainEqual({ method: "conversation_create", input: { botId: bot.id, request: chosen, makeMain: true } });
+    expect(slot.inspection.rpcCalls).toContainEqual({ method: "conversation_create", input: { botId: bot.id, request: chosen, makeMain: false } });
     expect(slot.inspection.navigateCalls).toContainEqual({ method: "toThread", threadId: "created-conversation" });
     expect(onNavigate).toHaveBeenCalledOnce();
     expect(slot.inspection.rpcCalls.some((call) => call.method === "main_set")).toBe(false);
@@ -284,7 +286,7 @@ describe("independent bot identities", () => {
     fireEvent.change(within(dialog).getByRole("textbox", { name: "Bot name" }), { target: { value: "New identity" } });
     selectOption(within(dialog).getByRole("combobox", { name: "Machine" }), "Remote");
     fireEvent.click(within(dialog).getByRole("button", { name: "Create bot" }));
-    await slot.findByRole("dialog", { name: "New main conversation" });
+    await slot.findByRole("dialog", { name: "New conversation" });
     expect(slot.inspection.rpcCalls).toContainEqual({ method: "bot_create", input: expect.objectContaining({ name: "New identity", hostId: "remote", linkedProjectIds: [], ownedProjectIds: [], soul: "" }) });
     expect(slot.inspection.rpcCalls.find((call) => call.method === "bot_create")?.input).not.toHaveProperty("homePath");
     expect(slot.getByText("New identity")).toBeTruthy();
@@ -305,7 +307,7 @@ describe("independent bot identities", () => {
     expect(slot.queryByRole("dialog")).toBeNull();
     expect(slot.getByText("Retry bot")).toBeTruthy();
     fireEvent.click(slot.getByRole("button", { name: /^Retry bot/ }));
-    await slot.findByRole("dialog", { name: "New main conversation" });
+    await slot.findByRole("dialog", { name: "New conversation" });
     expect(slot.inspection.rpcCalls.filter((call) => call.method === "bot_create")).toHaveLength(1);
     expect(slot.inspection.rpcCalls.filter((call) => call.method === "bot_prepare")).toEqual([
       { method: "bot_prepare", input: { botId: "created" } }, { method: "bot_prepare", input: { botId: "created" } },
@@ -407,14 +409,14 @@ describe("independent bot identities", () => {
     const { slot } = await mount({ bots: [legacy], rows: [thread("main", 100, { projectId: "legacy-project" })] });
     fireEvent.click(slot.getByRole("button", { name: /^Test bot/ }));
     expect(slot.inspection.sidebarActionCalls).toContainEqual({ method: "open", threadId: "main" });
-    await menu(slot, bot.name, "Move main…");
-    await slot.findByRole("dialog", { name: "Move main conversation" });
+    await menu(slot, bot.name, "New conversation…");
+    await slot.findByRole("dialog", { name: "New conversation" });
     expect(composer.props?.defaultProjectId).toBe(personalProjectId);
     expect(composer.props?.defaultEnvironment).toEqual(personalEnvironment);
     await act(async () => { await expect(composer.props!.onSubmit({ ...request, projectId: "legacy-project" })).rejects.toThrow("Choose no project or an available work project"); });
     expect(slot.inspection.rpcCalls.some((call) => call.method === "conversation_create")).toBe(false);
     await act(() => composer.props!.onSubmit(personalRequest));
-    expect(slot.inspection.rpcCalls).toContainEqual({ method: "conversation_create", input: { botId: bot.id, request: personalRequest, makeMain: true } });
+    expect(slot.inspection.rpcCalls).toContainEqual({ method: "conversation_create", input: { botId: bot.id, request: personalRequest, makeMain: false } });
     await waitFor(() => expect(slot.container.querySelector('.thread-row [data-sidebar-thread-id="main"]')).not.toBeNull());
     expect(slot.inspection.rpcCalls.some((call) => call.method === "main_set")).toBe(false);
   });

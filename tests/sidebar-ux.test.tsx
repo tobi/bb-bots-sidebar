@@ -40,7 +40,7 @@ it("keeps one open-main button and one inline new-chat button; settings remain i
   const row = slot.getByText("Bot one").closest<HTMLElement>(".project-row")!;
   fireEvent.mouseEnter(row);
   fireEvent.focus(within(row).getByRole("button", { name: /^Bot one/ }));
-  expect(within(row).getAllByRole("button")).toHaveLength(2);
+  expect(within(row).getAllByRole("button")).toHaveLength(3);
   expect(within(row).getByRole("button", { name: "New conversation with Bot one" })).toBeTruthy();
   expect(row.draggable).toBe(true);
   expect(slot.container.querySelector(".project-row-actions")).toBeNull();
@@ -163,14 +163,15 @@ it("offers an empty Main drop target only during a drag", async () => {
   expect(slot.queryByText("Move to Main")).toBeNull();
 });
 
-it("restores Move main and cancellation without replacing the existing main prematurely", async () => {
+it("removes Move main and keeps ordinary new conversations cancellable", async () => {
   const slot = await mount();
   fireEvent.contextMenu(slot.getByText("Bot one"));
-  fireEvent.click(await slot.findByRole("menuitem", { name: "Move main…" }));
-  const dialog = await slot.findByRole("dialog", { name: "Move main conversation" });
+  expect(slot.queryByRole("menuitem", { name: "Move main…" })).toBeNull();
+  fireEvent.click(await slot.findByRole("menuitem", { name: "New conversation…" }));
+  const dialog = await slot.findByRole("dialog", { name: "New conversation" });
   expect(slot.inspection.sidebarActionCalls).toEqual([]);
   expect(slot.getByTestId("bb-new-thread-composer").getAttribute("data-default-project-id")).toBe(personalProjectId);
-  fireEvent.click(within(dialog).getByRole("button", { name: "Cancel moving main" }));
+  fireEvent.click(within(dialog).getByRole("button", { name: "Close" }));
   await waitFor(() => expect(slot.queryByRole("dialog")).toBeNull());
   expect(slot.inspection.rpcCalls.some((call) => call.method === "main_set" || call.method === "conversation_create")).toBe(false);
 });

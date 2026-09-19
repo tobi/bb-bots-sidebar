@@ -58,6 +58,7 @@ async function mount({
     },
   });
   await waitFor(() => expect(slot.queryByText("Loading bots…")).toBeNull());
+  for (const toggle of slot.queryAllByRole("button", { name: /^Expand conversations for / })) fireEvent.click(toggle);
   return slot;
 }
 

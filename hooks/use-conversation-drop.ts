@@ -5,15 +5,16 @@ import type { PluginSidebarThread } from "@get-bb/plugin-sdk/app";
 type DragState = { threadId: string; title: string; botId: string | null };
 
 /** Pointer-based so BB's drag-to-split can still take over outside the sidebar. */
-export function useConversationDrop(onDrop: (thread: PluginSidebarThread, botId: string) => void, canDrop: (botId: string) => boolean) {
+export function useConversationDrop(onDrop: (thread: PluginSidebarThread, botId: string) => void, canDrop: (botId: string) => boolean,
+  getTarget?: (thread: PluginSidebarThread, element: Element, x: number, y: number, shiftKey: boolean) => string | null) {
   const [drag, setDrag] = useState<DragState | null>(null);
   const ghostRef = useRef<HTMLDivElement>(null);
   const position = useRef({ x: 0, y: 0 });
   const cancel = useRef<(() => void) | null>(null);
   const clickCleanup = useRef<(() => void) | null>(null);
   const releaseCleanup = useRef<(() => void) | null>(null);
-  const callbacks = useRef({ onDrop, canDrop });
-  callbacks.current = { onDrop, canDrop };
+  const callbacks = useRef({ onDrop, canDrop, getTarget });
+  callbacks.current = { onDrop, canDrop, getTarget };
   useEffect(() => () => { cancel.current?.(); clickCleanup.current?.(); releaseCleanup.current?.(); }, []);
 
   function swallowClick() {
@@ -46,8 +47,11 @@ export function useConversationDrop(onDrop: (thread: PluginSidebarThread, botId:
     let targetId: string | null = null;
     let ended = false;
     const title = thread.title ?? thread.titleFallback ?? "Untitled conversation";
-    function targetAt(x: number, y: number) {
-      const target = document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-bot-drop-target]");
+    function targetAt(x: number, y: number, shiftKey = false) {
+      const element = document.elementFromPoint(x, y);
+      if (!element || !sidebar!.contains(element)) return null;
+      if (callbacks.current.getTarget) return callbacks.current.getTarget(thread, element, x, y, shiftKey);
+      const target = element.closest<HTMLElement>("[data-bot-drop-target]");
       const id = target?.dataset.botDropTarget;
       return target && sidebar!.contains(target) && id && callbacks.current.canDrop(id) ? id : null;
     }
@@ -68,14 +72,14 @@ export function useConversationDrop(onDrop: (thread: PluginSidebarThread, botId:
       if (!engaged && Math.hypot(event.clientX - start.x, event.clientY - start.y) < 6) return;
       const first = !engaged; engaged = true;
       event.preventDefault(); position.current = { x: event.clientX, y: event.clientY }; moveGhost();
-      const next = targetAt(event.clientX, event.clientY);
+      const next = targetAt(event.clientX, event.clientY, event.shiftKey);
       if (first || next !== targetId) { targetId = next; setDrag({ threadId: thread.id, title, botId: next }); }
     }
     function up(event: PointerEvent) {
       if (ended || event.pointerId !== start.pointerId) return;
       // If a live update moved another bot under the pointer, require a new
       // hover/highlight rather than assigning to an unseen replacement target.
-      const dropped = engaged && targetId && targetAt(event.clientX, event.clientY) === targetId ? targetId : null;
+      const dropped = engaged && targetId && targetAt(event.clientX, event.clientY, event.shiftKey) === targetId ? targetId : null;
       if (engaged) swallowClick(); cleanup();
       if (dropped) callbacks.current.onDrop(thread, dropped);
     }

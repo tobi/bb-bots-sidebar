@@ -8,7 +8,7 @@ export function thread(id: string, updatedAt: number, overrides: Partial<PluginS
     activity: { workflows: 0, backgroundAgents: 0, backgroundCommands: 0, planMode: 0, goals: 0 },
     indicator: "none", indicatorLabel: null, isUnread: false, isPinned: false, isArchived: false,
     environment: { id: "env-existing", name: null, branchName: "feature", providerId: null, workspaceDisplayKind: "managed-worktree" },
-    host: { id: "host", name: "Local" }, createdAt: 1, updatedAt, lastReadAt: updatedAt, latestAttentionAt: updatedAt,
+    host: { id: "host", name: "Local" }, createdAt: updatedAt, updatedAt, lastReadAt: updatedAt, latestAttentionAt: updatedAt,
     ...overrides,
   };
 }

@@ -107,13 +107,25 @@ it("refreshes project state after ownership changes and configures the bound mem
   const personal=JSON.parse(String(await host.harness.behavior.callAgentTool("bot_read_state",{target:"project"},{threadId:b.id,projectId:"personal"})));
   expect(personal.state.currentProject.role).toBe("personal");
 });
-it("rejects duplicate names and missing main without routing side effects",async () => {
+it("rejects duplicate names and empty conversation lists without routing side effects",async () => {
   const {host,a,b,run,send}=await setup();
   host.store.save({...host.store.require(b.id),name:a.name});
   expect((await run(["message",a.name,"Hi"])).stderr).toContain("Several bots");
   host.store.save({...host.store.require(b.id),mainThreadId:null});
-  expect((await run(["message",b.id,"Hi"])).stderr).toContain("no main conversation");
+  host.threads.delete(b.id);
+  expect((await run(["message",b.id,"Hi"])).stderr).toContain("no visible conversation");
   expect(send).not.toHaveBeenCalled();
+});
+it("routes default messages to the first ordered root instead of the legacy main", async () => {
+  const { host, b, run } = await setup();
+  host.threads.set("preferred", makeThreadResponse({ id: "preferred", createdAt: 1 }));
+  host.store.bind("preferred", b.id);
+  host.store.mutate(b.id, current => ({ ...current, threadOrder: ["preferred", b.id] }));
+  expect((await run(["message", b.id, "Review"])).exitCode).toBe(0);
+  expect(host.harness.inspection.sdk.callsTo("threads.send")[0]?.[0]).toMatchObject({ threadId: "preferred", mode: "queue-if-active" });
+  const listed = JSON.parse((await run(["list", "--json"])).stdout!);
+  expect(listed.bots.find((bot: { id: string }) => bot.id === b.id).mainThreadId).toBe("preferred");
+  expect(host.store.require(b.id).mainThreadId).toBe(b.id);
 });
 it("resolves inherited reply targets read-only and does not retry failed delivery",async () => {
   const {host,a,b,run}=await setup();

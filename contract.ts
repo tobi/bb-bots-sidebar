@@ -20,6 +20,7 @@ export const metadataSchema = z.object({
   id, name: z.string().min(1).max(120), role: z.string().max(80), avatar: avatarSchema,
   hostId: id, stateReady: z.boolean(), legacyHomeProjectId: id.nullable(), linkedProjectIds: z.array(id),
   mainThreadId: id.nullable(), hiddenUntilActivity: z.boolean(), hiddenAt: z.number().nullable(),
+  threadOrder: z.array(id).optional(),
   sectionId: id.nullable(), order: z.number().int().nonnegative(),
   // agents and its hash are archived compatibility data, never injected or editable.
   // Keep the old read limit so oversized existing memory can be read and condensed.
@@ -99,6 +100,7 @@ export const rpcContract = defineRpcContract({
   conversation_create: { input: z.object({ botId: id, request: newThreadRequestSchema, makeMain: z.boolean().optional() }).strict(), output: z.object({ threadId: id }).strict() },
   conversation_fork: { input: z.object({ botId: id, sourceThreadId: id, request: newThreadRequestSchema }).strict(), output: z.object({ threadId: id }).strict() },
   conversation_nest: { input: z.object({ threadId: id, parentThreadId: id }).strict(), output: z.object({ ok: z.literal(true) }).strict() },
+  conversation_reorder: { input: z.object({ botId: id, threadId: id, targetThreadId: id, position: z.enum(["before", "after"]) }).strict(), output: z.object({ ok: z.literal(true) }).strict() },
   conversation_assign: { input: z.object({ botId: id, threadId: id }).strict(), output: z.object({ ok: z.literal(true) }).strict() },
   state_read: { input: z.object({ botId: id, file: stateFileSchema }).strict(), output: stateOutput },
   state_update: { input: stateUpdateSchema.safeExtend({ botId: id }), output: stateOutput },

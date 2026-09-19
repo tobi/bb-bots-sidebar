@@ -317,3 +317,12 @@
   .bot-avatar, .bot-avatar .bot-eyes, .bot-avatar .bot-work-ring,
   .conversation-status, .bot-other-working-dot { animation: none !important; }
 }
+.bots-sidebar [data-thread-drop-target][data-drop-position="before"] > .thread-row {
+  box-shadow: inset 0 2px var(--primary);
+}
+.bots-sidebar [data-thread-drop-target][data-drop-position="after"] > .thread-row {
+  box-shadow: inset 0 -2px var(--primary);
+}
+.bots-sidebar [data-thread-drop-target][data-drop-position="inside"] > .thread-row {
+  outline: 1px solid var(--primary);
+}

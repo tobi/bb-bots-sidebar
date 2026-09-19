@@ -9,6 +9,7 @@ import { createLegacyImporter } from "./lib/migrate-bots";
 import { browseProjectDirectory, createWorkProject } from "./lib/project-creation";
 import { registerBotsCli } from "./lib/bots-cli";
 import { registerBotMentions } from "./lib/bot-mentions";
+import { listBotConversations } from "./lib/bot-conversations";
 import { botProjectContext } from "./lib/project-context";
 import { BOT_GUIDANCE, botInstructions } from "./lib/bot-instructions";
 import { MEMORY_MAX_CHARS, validateMemory } from "./lib/memory-limit";
@@ -332,6 +333,22 @@ export default async function plugin(bb: BbPluginApi) {
       store.bind(thread.id, bot.id);
       publish();
       return { threadId: thread.id };
+    }),
+    conversation_reorder: ({ botId, threadId, targetThreadId, position }) => serial(botId, async () => {
+      const { rows } = await listBotConversations(bb, store.require(botId), resolveOwner);
+      const source = rows.find(row => row.id === threadId);
+      const target = rows.find(row => row.id === targetThreadId);
+      if (!source || !target) throw new Error("Both conversations must be visible and belong to this bot. Refresh and try again.");
+      const ids = new Set(rows.map(row => row.id));
+      const parent = (row: typeof source) => row.parentThreadId && ids.has(row.parentThreadId) ? row.parentThreadId : null;
+      if (parent(source) !== parent(target)) throw new Error("Reorder conversations within the same branch.");
+      if (threadId !== targetThreadId) {
+        const order = rows.map(row => row.id).filter(id => id !== threadId);
+        order.splice(order.indexOf(targetThreadId) + Number(position === "after"), 0, threadId);
+        store.mutate(botId, bot => ({ ...bot, threadOrder: order, updatedAt: nextTimestamp(bot.updatedAt) }));
+        publish();
+      }
+      return { ok: true } as const;
     }),
     conversation_nest: ({ threadId, parentThreadId }) => serial("registry", async () => {
       if (threadId === parentThreadId) throw new Error("A conversation cannot be nested under itself.");

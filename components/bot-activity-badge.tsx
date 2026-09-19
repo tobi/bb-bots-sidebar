@@ -18,7 +18,7 @@ export function BotActivityBadge({ threads, mainThreadId }: { threads: readonly 
   const active = mainStatus?.state === "working" || mainStatus?.state === "waiting" || otherWorking.length > 0;
   if (!active) return unreadDone ? <UnreadBadge error={unreadError} /> : null;
 
-  const mainLabel = mainStatus ? `Main conversation: ${mainStatus.label}` : "Main conversation unavailable";
+  const mainLabel = mainStatus ? `First conversation: ${mainStatus.label}` : "First conversation unavailable";
   const otherLabel = otherWorking.length ? `${otherWorking.length} other conversation${otherWorking.length === 1 ? "" : "s"} working` : "";
   const label = [mainLabel, otherLabel].filter(Boolean).join("; ");
   // Three small slots fit beside the main indicator without spilling outside

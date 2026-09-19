@@ -131,15 +131,18 @@ in bot state.
 
 ## Sidebar interactions
 
-- Click a bot to open its main conversation and show all active top-level
-  conversation trees first, plus up to **five inactive** trees. Remaining inactive
-  conversations sit behind **N Other**; active work never consumes the five slots.
-  Right-click for a new conversation, project/worktree work, Edit, visibility,
-  and Move main. Existing main/history stays intact until replacement is sent.
+- Click a bot to open the **first conversation in its list**, without expanding
+  or collapsing it. The end chevron independently toggles the full list and
+  counts top-level conversations. There is no special main conversation.
+- Drag above or below a sibling to reorder conversations; **Move to top** in
+  the context menu is the keyboard/touch alternative. Shift-drop nests a thread.
+  Order is stored privately and shared across clients. Unordered conversations
+  appear newest-created first after manually placed ones; activity never reshuffles
+  them. Archiving the first conversation makes the next one the click target.
 - Hover a bot row to reveal **+** (also available on keyboard focus and touch).
-  It opens the native composer without opening main or expanding children.
+  It opens the native composer without opening a conversation or expanding the bot.
   **+** and **New conversation…** default to an owned project on the bot's configured
-  machine. With multiple owned projects, prefer the main's project if owned, then
+  machine. With multiple owned projects, prefer the first conversation's project if owned, then
   the first owned project in link order. Mere membership does not change the
   personal-workspace default. The project and machine remain editable.
 - Drag an unassigned conversation from **Chats** onto a bot, or use **Assign to
@@ -151,18 +154,13 @@ in bot state.
   keyboard focus and touch. It sits inline before the child count, never covering
   the title or disclosure. This uses BB's normal archive action, including children.
 - Each conversation's right-edge count/chevron reveals only its own children,
-  collapsed by default. The bot-row count refers only to the **main conversation's
-  children**, never the independent topics. Those children appear in a separate,
-  directly connected, more-indented tree above the other top-level conversations,
-  without extra labels or a divider.
-- Working/waiting descendants keep their root visible. Viewed and pinned inactive
-  branches take priority within the five slots; unread completions still count as
-  inactive. Children keep independent toggles, and navigation reveals the viewed
-  ancestor path without opening overflow. Chats retains its separate overflow.
-- The avatar's bottom-right spinner shows its **main** working. Small pulsing dots
+  collapsed by default. Once a bot is explicitly expanded, navigation reveals
+  the viewed ancestor path. Navigation never expands a collapsed bot.
+  Chats retains its separate overflow.
+- The avatar's bottom-right spinner shows its **first conversation** working. Small pulsing dots
   to the left show other working conversations—even when collapsed. Three slots
   keep it compact; a **+** indicates overflow and the tooltip gives the exact count.
-  Other work never makes an idle main look busy. Waiting/errors remain distinct.
+  Other work never makes an idle first conversation look busy. Waiting/errors remain distinct.
 - Working conversation rows spin; completed ones are green dots while unviewed,
   then smaller gray dots. Reduced motion disables all activity animations.
 - **Main** is the invisible default section. Explicit custom sections retain their
@@ -186,7 +184,7 @@ in bot state.
   work context or a linked project is preselected, and you can change
   the project, machine, and harness inside the popup before sending.
 - **New conversation in worktree…** selects a fresh managed worktree on the
-  originating conversation's machine (or the bot's main/default machine), never
+  originating conversation's machine (or the bot's first-conversation/default machine), never
   reuses the existing worktree. The picker remains editable; if that machine lacks
   a project source, BB may fall back to an available source.
 - Save is explicit; Enter never submits text fields. Drafts survive tab changes.
@@ -220,8 +218,8 @@ bots automatically.
 
 Migration never deletes or modifies legacy source files, project folders, or
 conversations. Old home projects are retained for existing history but are not
-used for new bot launches. Choose **Move main** to replace an old project-bound
-main with a fresh projectless conversation while keeping its history.
+used for new bot launches. Start an ordinary new conversation and reorder the
+list to choose what opens when clicking the bot; old history remains accessible.
 
 Cleanup of old generated project `SOUL.md` / `bot.json` files is a separate,
 owner-approved operation: compare against saved migration hashes, keep tracked or
@@ -267,7 +265,7 @@ bb bots message <bot-id-or-exact-name> "Please review the changes"
 bb bots message <bot-id> "My reply" --thread <sender-conversation-id>
 ```
 
-Messages use BB's native queue: idle conversations start a turn, busy conversations receive the message later. The default destination is the recipient's existing main conversation; `--thread` must belong to that bot. Messages identify the invoking conversation and its bound bot, clearly distinguish agent coordination from user instructions, and include an asynchronous reply command. FYI messages need no acknowledgement. Unbound conversations and external CLI callers are labeled accurately. The CLI does not create conversations or change membership, bindings, permissions, or private state.
+Messages use BB's native queue: idle conversations start a turn, busy conversations receive the message later. The default destination is the recipient's first visible ordered conversation; `--thread` must belong to that bot. Messages identify the invoking conversation and its bound bot, clearly distinguish agent coordination from user instructions, and include an asynchronous reply command. FYI messages need no acknowledgement. Unbound conversations and external CLI callers are labeled accurately. The CLI does not create conversations or change membership, bindings, permissions, or private state.
 
 Listing exposes public bot metadata only and paginates at 100 bots maximum. Names must match exactly; use IDs for duplicate names. Quote messages (maximum 12,000 characters). Delivery receipts confirm acceptance, not task completion or a reply.
 

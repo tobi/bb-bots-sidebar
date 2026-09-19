@@ -68,8 +68,8 @@ it("resolves stable IDs using current public metadata, not private state or a st
 it("keeps bots without a main referenceable without starting a conversation", async () => {
   const host = await setup(); const bot = await host.create("New bot", []);
   const item = (await provider(host).search(context("New bot")))[0]!;
-  expect(item.subtitle).toContain("No main conversation yet");
-  const result = await provider(host).resolve(item.id); expect(result.context).toContain("no main conversation yet");
+  expect(item.subtitle).not.toContain("main conversation");
+  const result = await provider(host).resolve(item.id); expect(result.context).toContain("first visible conversation");
   expect(host.harness.inspection.sdk.callsTo("threads.spawn")).toEqual([]);
   expect(host.harness.inspection.sdk.callsTo("threads.send")).toEqual([]);
 });

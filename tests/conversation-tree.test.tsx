@@ -30,6 +30,7 @@ async function mount(personal: boolean, older = false) {
     rpc: { bots_list: () => ({ personalProjectId, bots: personal ? [] : [bot], sections: [], hosts: [], projects: [{ id: "project", name: "Test project" }], warnings: [], threadBindings: personal ? [] : rows.filter((row) => !row.parentThreadId).map((row) => ({ threadId: row.id, botId: bot.id })) }) },
   });
   await slot.findByText(personal ? "Chats" : "Test bot");
+  if (!personal) fireEvent.click(slot.getByRole("button", { name: "Expand conversations for Test bot" }));
   return slot;
 }
 

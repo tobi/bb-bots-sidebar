@@ -16,6 +16,7 @@ async function mount(personal: boolean) {
     sidebarThreads: { projects: [{ id: rows[0]!.projectId, name: "Project", isPersonal: personal }], threads: rows },
     rpc: { bots_list: () => ({ bots: personal ? [] : [bot], personalProjectId, hosts: [], sections: [], projects: [], warnings: [], threadBindings: personal ? [] : rows.filter(row => !row.parentThreadId).map(row => ({ threadId: row.id, botId: bot.id })) }) },
   });
+  if (!personal) fireEvent.click(await slot.findByRole("button", { name: "Expand conversations for Test bot" }));
   await slot.findByText("Conversation root");
   return { slot, onNavigate };
 }
@@ -46,8 +47,8 @@ it.each([false, true])("gives each expanded child its own archive action (Chats=
 
 it.each([false, true])("supports archiving overflow rows without opening a conversation (Chats=%s)", async (personal) => {
   const { slot, onNavigate } = await mount(personal);
-  expect(slot.queryByRole("button", { name: "Archive Older conversation" })).toBeNull();
-  fireEvent.click(slot.getByRole("button", { name: /^\d+ Other$/ }));
+  if (personal) expect(slot.queryByRole("button", { name: "Archive Older conversation" })).toBeNull();
+  if (personal) fireEvent.click(slot.getByRole("button", { name: /^\d+ Other$/ }));
   const archive = slot.getByRole("button", { name: "Archive Older conversation" });
   expect(archive.getAttribute("data-archive-thread-id")).toBe("old-leaf");
   fireEvent.keyDown(archive, { key: "Enter" }); fireEvent.click(archive, { detail: 0 });
@@ -59,7 +60,7 @@ it("archives a main child, never the bot identity or main pointer", async () => 
   const { slot } = await mount(false);
   expect(slot.container.querySelector(".project-row .conversation-archive")).toBeNull();
   expect(slot.queryByRole("button", { name: "Archive Conversation archived" })).toBeNull();
-  fireEvent.click(slot.getByRole("button", { name: "Expand children of Test bot" }));
+  fireEvent.click(slot.getByRole("button", { name: "Expand children of Conversation main" }));
   fireEvent.click(slot.getByRole("button", { name: "Archive Conversation main-child" }));
   expect(slot.inspection.sidebarActionCalls).toEqual([{ method: "archive", threadId: "main-child" }]);
   expect(slot.inspection.rpcCalls.map(call => call.method)).toEqual(["bots_list"]);

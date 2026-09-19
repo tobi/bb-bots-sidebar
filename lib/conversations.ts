@@ -1,4 +1,5 @@
 import type { PluginSidebarThread } from "@get-bb/plugin-sdk/app";
+import { orderConversations } from "./conversation-order";
 
 const WORKING_INDICATORS = new Set(["runtime", "workflow", "background-agent", "background-command", "plan-mode", "goal", "working-draft"]);
 
@@ -98,21 +99,11 @@ export function conversationTree(threads: readonly PluginSidebarThread[], mainTh
   };
 }
 
-// A bot shows every busy tree FIRST, plus five inactive trees. Busy roots must
-// not consume any of the inactive allowance, and unread completions still count
-// as inactive. Prioritize viewed/pinned branches within those five, not in
-// addition to them, so navigation stays visible without expanding overflow.
-export function botConversationTree(threads: readonly PluginSidebarThread[], mainThreadId: string | null, activeThreadId: string | null) {
-  const { summaries, ...tree } = buildConversationTree(threads, mainThreadId, activeThreadId);
-  const busy = tree.roots.filter((thread) => summaries.get(thread.id)!.busy);
-  const inactive = tree.roots.filter((thread) => !summaries.get(thread.id)!.busy);
-  const priority = [...inactive].sort((a, b) =>
-    Number(summaries.get(b.id)!.selected) - Number(summaries.get(a.id)!.selected)
-    || Number(summaries.get(b.id)!.pinned) - Number(summaries.get(a.id)!.pinned));
-  const visibleIds = new Set(priority.slice(0, 5).map((thread) => thread.id));
+export function orderedBotConversationTree(threads: readonly PluginSidebarThread[], order: readonly string[] = [], activeThreadId: string | null = null) {
+  const tree = buildConversationTree(threads, null, activeThreadId);
   return {
-    ...tree,
-    recent: [...busy, ...inactive.filter((thread) => visibleIds.has(thread.id))],
-    other: inactive.filter((thread) => !visibleIds.has(thread.id)),
+    roots: orderConversations(tree.roots, order),
+    activePath: tree.activePath,
+    childrenByParent: new Map([...tree.childrenByParent].map(([id, children]) => [id, orderConversations(children, order)])),
   };
 }

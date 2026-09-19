@@ -10,14 +10,14 @@ const running = (id: string) => thread(id, 100, { indicator: "runtime" });
 
 it("shows a dedicated main spinner even with no other active conversations", () => {
   const view = render(<BotActivityBadge mainThreadId="main" threads={[running("main")]} />);
-  expect(view.getByRole("img", { name: "Main conversation: Working" })).toBeTruthy();
+  expect(view.getByRole("img", { name: "First conversation: Working" })).toBeTruthy();
   expect(view.container.querySelector(".bot-main-activity .conversation-status-working")).not.toBeNull();
   expect(view.container.querySelectorAll(".bot-other-working-dot")).toHaveLength(0);
 });
 
 it("places three other-conversation dots before the main spinner", () => {
   const view = render(<BotActivityBadge mainThreadId="main" threads={[running("main"), running("a"), running("b"), running("c")]} />);
-  const badge = view.getByRole("img", { name: "Main conversation: Working; 3 other conversations working" });
+  const badge = view.getByRole("img", { name: "First conversation: Working; 3 other conversations working" });
   expect(badge.getAttribute("data-other-working-count")).toBe("3");
   expect(badge.querySelectorAll(".bot-other-working-dot")).toHaveLength(3);
   expect(badge.lastElementChild?.className).toBe("bot-main-activity");
@@ -25,14 +25,14 @@ it("places three other-conversation dots before the main spinner", () => {
 
 it("does not imply the main is working when only other threads are active", () => {
   const view = render(<BotActivityBadge mainThreadId="main" threads={[thread("main", 1), running("other")]} />);
-  expect(view.getByRole("img", { name: "Main conversation: Done; 1 other conversation working" })).toBeTruthy();
+  expect(view.getByRole("img", { name: "First conversation: Done; 1 other conversation working" })).toBeTruthy();
   expect(view.container.querySelector(".bot-main-activity .conversation-status-working")).toBeNull();
   expect(view.container.querySelector(".bot-main-activity .conversation-status-done")).not.toBeNull();
 });
 
 it.each([null, "missing"])("keeps other activity separate from an unavailable main (%s)", (mainThreadId) => {
   const view = render(<BotActivityBadge mainThreadId={mainThreadId} threads={[running("other")]} />);
-  expect(view.getByRole("img", { name: "Main conversation unavailable; 1 other conversation working" })).toBeTruthy();
+  expect(view.getByRole("img", { name: "First conversation unavailable; 1 other conversation working" })).toBeTruthy();
   expect(view.container.querySelector(".bot-main-activity")).toBeNull();
   expect(view.container.querySelector(".bot-main-activity-placeholder")).not.toBeNull();
 });
@@ -58,7 +58,7 @@ it("counts each background-working conversation once, ignoring archived and wait
 
 it("keeps main waiting status distinct from working", () => {
   const view = render(<BotActivityBadge mainThreadId="main" threads={[{ ...running("main"), hasPendingInteraction: true }]} />);
-  expect(view.getByRole("img", { name: "Main conversation: Waiting for input" })).toBeTruthy();
+  expect(view.getByRole("img", { name: "First conversation: Waiting for input" })).toBeTruthy();
   expect(view.container.querySelector(".conversation-status-waiting")).not.toBeNull();
   expect(view.container.querySelector(".conversation-status-working")).toBeNull();
 });
@@ -93,11 +93,13 @@ it("shows collapsed activity at the avatar without mixing bot ownership or chang
   });
   await slot.findByText(bot.name);
   const row = slot.getByText(bot.name).closest<HTMLElement>(".project-row")!;
-  expect(within(row).getByRole("img", { name: "Main conversation: Working; 3 other conversations working" }).closest(".bot-icon-shell")).not.toBeNull();
+  expect(within(row).getByRole("img", { name: "First conversation: Working; 3 other conversations working" }).closest(".bot-icon-shell")).not.toBeNull();
   expect(slot.queryByText("Conversation child")).toBeNull();
-  const disclosure = within(row).getByRole("button", { name: "Expand children of Test bot" });
-  expect(disclosure.textContent).toBe("1");
+  const disclosure = within(row).getByRole("button", { name: "Expand conversations for Test bot" });
+  expect(disclosure.textContent).toBe("3");
   fireEvent.click(disclosure);
+  expect(slot.queryByText("Conversation child")).toBeNull();
+  fireEvent.click(slot.getByRole("button", { name: "Expand children of Conversation main" }));
   expect(slot.getByText("Conversation child")).toBeTruthy();
   expect(slot.inspection.sidebarActionCalls).toEqual([]);
   expect(onNavigate).not.toHaveBeenCalled();

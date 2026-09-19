@@ -71,18 +71,20 @@ Preserve the approved interaction model below. An older source snapshot once
 reintroduced removed controls during development. Do not restore old snapshots
 or reintroduce hover toolbars when making unrelated changes.
 
-- Clicking/selecting a bot opens its main and reveals all working/waiting top-level
-  conversation trees FIRST, plus at most FIVE inactive trees. Active work does not
-  consume those five slots. Put remaining inactive roots behind a separate N Other
-  toggle, collapsed by default; do not render a Topics heading. Keep viewed/pinned
-  branches within the five inactive slots, never extra. A busy descendant keeps
-  its root out of overflow. Each conversation's children stay independently collapsed.
-  The bot-row chevron remains ONLY for the main conversation's children.
-- The bot-row right-edge count/chevron is ONLY for direct children of its MAIN
-  conversation, not all topics or grandchildren. Reveal those in a separate,
-  indented, directly connected tree above the other top-level conversations. Do
-  not render Topics/Main’s children labels or a divider. No arrow for a main
-  with no children. Counts/chevrons never navigate; reveal active ancestor paths.
+- Clicking a bot opens its first ordered top-level conversation without changing
+  expansion. No special main UI: legacy main pointers remain compatibility data.
+  A separate end chevron toggles the whole list and counts all top-level roots.
+  Bots start collapsed; navigation and assignment never automatically expand them.
+  Explicit expansion shows all roots, including the former main. Children retain
+  independent disclosure; reveal active ancestor paths only within an expanded bot.
+- Drag above/below a sibling to reorder it, or use Move to top in its context menu.
+  Shift-drop retains nesting. Persist threadOrder privately in the plugin DB;
+  manual order wins, unplaced roots/siblings follow newest-created first. Activity,
+  unread state, pinning, and navigation never reshuffle them. No bot-root overflow.
+  Do not change bindings, parents, projects, environments, or historical main
+  pointers to reorder. Click target, preview, activity badge, project defaults,
+  and default bot-message destination use the same first visible root.
+- Counts/chevrons never navigate. No Topics/Main's children labels or divider.
   No multi-action hover overlay toolbars. Conversation rows may show one inline
   archive button on hover/keyboard focus (always available on touch), immediately
   LEFT of the count/chevron. Keep it outside the navigation link and prevent
@@ -94,14 +96,14 @@ or reintroduce hover toolbars when making unrelated changes.
   Portaled dropdown/context-menu Content needs `usePortalScopeProps()` so scoped
   plugin CSS applies. Highlight Radix `data-highlighted` for mouse and keyboard;
   keep disabled entries unhighlighted. Verify computed styles in the browser.
-- Each bot row has ONE inline + before its main-child disclosure, shown on hover
+- Each bot row has ONE inline + before its list disclosure, shown on hover
   or keyboard focus and always available on touch. Reserve its width; no layout
-  shift or overlay toolbar. Keep it separate from opening main, disclosures, and
+  shift or overlay toolbar. Keep it separate from opening a conversation, disclosures, and
   bot reordering. Use BB Button/Tooltip. + and New conversation use an available
-  owned project (owned main project first, then linked order), otherwise personal.
+  owned project (owned first-conversation project first, then linked order), otherwise personal.
   Membership alone never chooses the default. Refresh ownership before opening;
   use the bot's configured host and preserve composer overrides after opening.
-  Main creation/move-main retain their existing personal-workspace behavior.
+  Empty bots use the same ordinary new-conversation composer and ownership defaults.
 - Bot settings (avatar, role, SOUL, section) belong in **Edit bot**. Menus are
   opened only by right-click/keyboard context-menu actions.
 - Reorder bots and move them between sections by dragging; never add arrow
@@ -143,18 +145,18 @@ or reintroduce hover toolbars when making unrelated changes.
   Never restore a separate project pre-select/Continue screen. Use ownership-aware
   defaults for the generic new-chat action, the selected host's checkout for
   explicit project chat, and a fresh
-  managed worktree for worktree chat. Use row context or the main's still-linked
+  managed worktree for worktree chat. Use row context or the first conversation's still-linked
   project, then linked-first available fallback. The native project picker stays
   editable; hold seeds stable after opening so refreshes cannot reset user choices.
 - New conversation in worktree ALWAYS seeds a fresh managed worktree with an
-  explicit hostId (clicked conversation host, or main/default machine for bot menu).
+  explicit hostId (clicked conversation host, or first-conversation/default machine for bot menu).
   Do not reuse the clicked worktree or omit hostId: the host composer ignores a
   host environment seed without it. Keep draft keys distinct by worktree host and
   verify actual picker state. Preserve user overrides; unavailable hosts/sources
   may be reconciled by the host composer, never silently claim same-host success.
 - Editors require an explicit Save click. Enter in text inputs must not submit;
   SOUL.md must accept normal newlines. The bot editor can create a section.
-- Preserve Move main / cancellation and Make main without losing history.
+- Do not restore Move main or Make main. Keep existing histories and legacy pointers.
 - Keep the later additions: worktree composer, conversation/Chats menus and
   rename/archive, older unassigned Chats grouped under N Other, and status icons.
 - Highlight the actual current chat with `[aria-current="page"]` styles (the
@@ -163,10 +165,10 @@ or reintroduce hover toolbars when making unrelated changes.
   not on the left; no disclosure spacers for leaf rows and never overlay toolbars. Selected
   rows use background highlighting only, without a left stripe.
   Reveal the current chat's ancestor path on navigation.
-- The avatar's bottom-right activity badge reflects its MAIN conversation, not
+- The avatar's bottom-right activity badge reflects its FIRST conversation, not
   aggregate bot work. Small pulsing dots to its left count other working threads,
   including collapsed descendants; three slots maximum, with + and an exact-count
-  tooltip on overflow. Keep an idle main visually distinct from busy others.
+  tooltip on overflow. Keep an idle first conversation visually distinct from busy others.
   Waiting takes precedence over working; preserve unread errors, ignore archived
   activity, and disable all animation under reduced motion. Counts never navigate.
 - Completed conversation status is a green dot when unviewed, then a smaller gray
@@ -209,7 +211,7 @@ or reintroduce hover toolbars when making unrelated changes.
   Configuration stays read-only; project state reads refresh the relationship.
 - `bb bots list` exposes paginated public metadata, never private bot documents.
   `bb bots message` uses native `threads.send` with `queue-if-active` and the invoking
-  `senderThreadId`. Default to an existing main; explicit reply threads must resolve
+  `senderThreadId`. Default to the first visible ordered root; explicit reply threads must resolve
   to the recipient bot. Resolve sender identity from bindings/inheritance, not project ownership.
   Never forge a sender, auto-create a conversation, or change permissions/bindings to send.
 - Frame messages as asynchronous agent coordination, not user approval. Include an exact
