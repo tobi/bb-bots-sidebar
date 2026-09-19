@@ -101,7 +101,7 @@ export const rpcContract = defineRpcContract({
   conversation_fork: { input: z.object({ botId: id, sourceThreadId: id, request: newThreadRequestSchema }).strict(), output: z.object({ threadId: id }).strict() },
   conversation_nest: { input: z.object({ threadId: id, parentThreadId: id }).strict(), output: z.object({ ok: z.literal(true) }).strict() },
   conversation_reorder: { input: z.object({ botId: id, threadId: id, targetThreadId: id, position: z.enum(["before", "after"]) }).strict(), output: z.object({ ok: z.literal(true) }).strict() },
-  conversation_assign: { input: z.object({ botId: id, threadId: id }).strict(), output: z.object({ ok: z.literal(true) }).strict() },
+  conversation_assign: { input: z.object({ botId: id, threadId: id, placeFirst: z.boolean().optional() }).strict(), output: z.object({ ok: z.literal(true) }).strict() },
   state_read: { input: z.object({ botId: id, file: stateFileSchema }).strict(), output: stateOutput },
   state_update: { input: stateUpdateSchema.safeExtend({ botId: id }), output: stateOutput },
   state_apply: { input: z.object({ botId: id, change: stateMutationSchema }).strict(), output: stateMutationResultSchema },

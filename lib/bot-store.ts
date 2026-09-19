@@ -101,13 +101,17 @@ export function createBotStore(bb: BbPluginApi) {
         return saveWithProjects(update(current), desiredOwners);
       }).immediate();
     },
-    adoptInherited(threadId: string, botId: string, projectId: string | null) {
+    adoptInherited(threadId: string, botId: string, projectId: string | null, placeFirst = false) {
       return db.transaction(() => {
         const existing = owner(threadId);
         if (existing) return { botId: existing, changed: false, joined: false };
         const bot = get(botId); if (!bot) throw new Error("Bot no longer exists");
         const joined = projectId !== null && !bot.linkedProjectIds.includes(projectId);
-        if (joined) saveWithProjects({ ...bot, linkedProjectIds: [...bot.linkedProjectIds, projectId], updatedAt: nextTimestamp(bot.updatedAt) });
+        if (joined || placeFirst) saveWithProjects({ ...bot,
+          linkedProjectIds: joined ? [...bot.linkedProjectIds, projectId!] : bot.linkedProjectIds,
+          ...(placeFirst ? { threadOrder: [threadId, ...(bot.threadOrder ?? []).filter(id => id !== threadId)] } : {}),
+          updatedAt: nextTimestamp(bot.updatedAt),
+        });
         bind(threadId, botId);
         return { botId, changed: true, joined };
       }).immediate();

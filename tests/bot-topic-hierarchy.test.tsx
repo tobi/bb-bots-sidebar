@@ -58,6 +58,25 @@ it("opens the first ordered conversation without unfolding, not the legacy main"
   fireEvent.click(open()); expect(toggle().getAttribute("aria-expanded")).toBe("true");
 });
 
+it("double-clicking the bot toggles the list once, without duplicate navigation", async () => {
+  const { slot, toggle, open } = await mount();
+  for (const expanded of ["true", "false"]) {
+    const button = open();
+    fireEvent.click(button, { detail: 1 });
+    fireEvent.click(button, { detail: 2 });
+    fireEvent.doubleClick(button, { detail: 2 });
+    expect(toggle().getAttribute("aria-expanded")).toBe(expanded);
+    expect(slot.queryByText("Conversation child")).toBeNull();
+  }
+  expect(slot.inspection.sidebarActionCalls).toEqual([
+    { method: "open", threadId: "first", options: undefined },
+    { method: "open", threadId: "first", options: undefined },
+  ]);
+  fireEvent.doubleClick(toggle());
+  expect(toggle().getAttribute("aria-expanded")).toBe("false");
+  expect(slot.inspection.rpcCalls.every(call => call.method === "bots_list")).toBe(true);
+});
+
 it.each(["before", "after", "nest", "escape", "outside", "touch", "blur", "unmount", "failure"])("pointer drag supports %s without stealing split gestures or clicks", async mode => {
   const { slot, toggle } = await mount(mode === "failure"); fireEvent.click(toggle());
   const source = slot.container.querySelector<HTMLElement>('[data-sidebar-thread-id="last"]')!;
@@ -122,6 +141,21 @@ it.each(["before", "after"])("dragging %s persists order without nesting or navi
   await waitFor(() => expect(Array.from(slot.container.querySelectorAll('[data-sidebar-thread-id]')).map(row => row.getAttribute("data-sidebar-thread-id"))).toEqual(expected));
   expect(slot.inspection.sidebarActionCalls).toEqual([]); expect(slot.inspection.rpcCalls.some(call => call.method === "conversation_nest" || call.method === "bots_reorder")).toBe(false);
   fireEvent.click(open()); expect(slot.inspection.sidebarActionCalls[0]).toMatchObject({ threadId: expected[0] });
+});
+
+it("drops an existing root on its own bot to make it first without navigation or collapse", async () => {
+  const { slot, botRow, toggle } = await mount(); fireEvent.click(toggle());
+  const source = slot.container.querySelector<HTMLElement>('[data-sidebar-thread-id="last"]')!;
+  fireEvent.pointerDown(source, { button: 0, buttons: 1, pointerId: 1, pointerType: "mouse", clientX: 40, clientY: 300 });
+  hit = botRow;
+  fireEvent.pointerMove(window, { buttons: 1, pointerId: 1, clientX: 40, clientY: 100 });
+  expect(botRow.dataset.conversationDrop).toBe("true");
+  expect(slot.getByText("Drop to make top conversation")).toBeTruthy();
+  fireEvent.pointerUp(window, { pointerId: 1, clientX: 40, clientY: 100 });
+  fireEvent.click(within(botRow).getByRole("button", { name: /^Test bot/ }));
+  await waitFor(() => expect(slot.inspection.rpcCalls).toContainEqual({ method: "conversation_reorder", input: { botId: bot.id, threadId: "last", targetThreadId: "first", position: "before" } }));
+  await waitFor(() => expect(slot.container.querySelector('[data-sidebar-thread-id]')?.getAttribute("data-sidebar-thread-id")).toBe("last"));
+  expect(toggle().getAttribute("aria-expanded")).toBe("true"); expect(slot.inspection.sidebarActionCalls).toEqual([]);
 });
 
 it("archives the first row and opens the next without replacing a main", async () => {

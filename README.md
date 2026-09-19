@@ -134,6 +134,9 @@ in bot state.
 - Click a bot to open the **first conversation in its list**, without expanding
   or collapsing it. The end chevron independently toggles the full list and
   counts top-level conversations. There is no special main conversation.
+  Double-click the bot name/avatar to fold or unfold the list as well.
+  The subtitle keeps the bot's role, followed by its owned project names—not
+  the first conversation's title. Long labels truncate with full hover text.
 - Drag above or below a sibling to reorder conversations; **Move to top** in
   the context menu is the keyboard/touch alternative. Shift-drop nests a thread.
   Order is stored privately and shared across clients. Unordered conversations
@@ -150,6 +153,8 @@ in bot state.
   project as a member if needed. Projectless chats need no project link. History,
   project, environment and existing child assignments stay unchanged. A drop does
   not navigate away; use the confirmation's **View** action to open it.
+  Dropping on a bot also makes the conversation first in its list. Drop an
+  existing top-level conversation on its own bot row to move it to the top.
 - Hover a conversation row to reveal its archive button, also available on
   keyboard focus and touch. It sits inline before the child count, never covering
   the title or disclosure. This uses BB's normal archive action, including children.

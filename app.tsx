@@ -395,6 +395,7 @@ function ThreadRow({ thread, siblings, childrenByParent, activePath, actions, ac
 
 function BotGroup({
   metadata,
+  ownedProjectNames,
   threads,
   selected,
   activeThreadId,
@@ -420,6 +421,7 @@ function BotGroup({
   conversationDropTarget,
 }: {
   metadata: BotMetadata;
+  ownedProjectNames: string[];
   threads: PluginSidebarThread[];
   selected: boolean;
   activeThreadId: string | null;
@@ -446,12 +448,14 @@ function BotGroup({
 }) {
   const { childrenByParent, activePath, roots } = useMemo(() => orderedBotConversationTree(threads, metadata.threadOrder, activeThreadId), [threads, metadata.threadOrder, activeThreadId]);
   const conversationsId = useId();
-  const reorderDrag = useConversationReorder(threads, onReorder, onNest);
+  const reorderDrag = useConversationReorder(threads, onReorder, onNest, metadata.id, roots[0]?.id);
+  const dropToTop = conversationDropTarget || Boolean(reorderDrag.target?.botRow);
   const portalScope = usePortalScopeProps();
   const renderThread = (thread: PluginSidebarThread) => <ThreadRow key={thread.id} thread={thread} siblings={roots} childrenByParent={childrenByParent} activePath={activePath} actions={actions} activeThreadId={activeThreadId} onNavigate={onNavigate} onReorder={onReorder} onNewInWorktree={onNewInWorktree} onFork={onFork} onNest={onNest} onArchive={onArchive} reorderDrag={reorderDrag} />;
   const botSelected = selected || threads.some((thread) => thread.id === activeThreadId);
   const latest = roots[0];
-  const latestTitle = latest?.title ?? latest?.titleFallback ?? metadata.role;
+  const subtitle = [metadata.role, ownedProjectNames.join(", ")].filter(Boolean).join(" · ");
+  const subtitleTitle = [metadata.role, ownedProjectNames.length ? `Owned projects: ${ownedProjectNames.join(", ")}` : ""].filter(Boolean).join(" · ");
   const idleVariant = [...metadata.id].reduce((total, character) => total + character.charCodeAt(0), 0) % 3;
   return (
     <section className="project-group">
@@ -464,8 +468,8 @@ function BotGroup({
         { label: "Add / manage projects…", action: () => onEdit("projects") },
         { label: hidden ? "Show in sidebar" : "Hide until activity", action: () => onVisibilityChange(!hidden) },
       ]}>
-      <div className="project-row relative flex cursor-grab items-center rounded-lg px-1.5 aria-current:bg-state-active data-[hidden=true]:opacity-55 data-[dragging=true]:opacity-35 active:cursor-grabbing" aria-current={botSelected ? "page" : undefined} data-hidden={hidden} data-dragging={dragging} data-bot-drop-target={metadata.id} data-conversation-drop={conversationDropTarget} draggable onDragStart={onDragStart} onDragEnd={onDragEnd}>
-        <button type="button" className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left" onClick={onOpenBot}>
+      <div className="project-row relative flex cursor-grab items-center rounded-lg px-1.5 aria-current:bg-state-active data-[hidden=true]:opacity-55 data-[dragging=true]:opacity-35 active:cursor-grabbing" aria-current={botSelected ? "page" : undefined} data-hidden={hidden} data-dragging={dragging} data-bot-drop-target={metadata.id} data-conversation-drop={dropToTop} draggable onDragStart={onDragStart} onDragEnd={onDragEnd}>
+        <button type="button" className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left" onClick={(event) => { if (event.detail < 2) onOpenBot(); }} onDoubleClick={(event) => { event.preventDefault(); onToggleTopics(); }}>
           <span className="bot-icon-shell relative flex size-8 shrink-0 items-center justify-center">
             <SidebarBotIcon botId={metadata.id} avatar={metadata.avatar} threads={threads} idleVariant={idleVariant} selected={botSelected} />
             <BotActivityBadge threads={threads} mainThreadId={latest?.id ?? null} />
@@ -474,7 +478,7 @@ function BotGroup({
             <span className="flex items-baseline gap-2">
               <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-foreground">{metadata.name}</span>
             </span>
-            <span className="block truncate text-[10px] leading-4 text-muted-foreground">{conversationDropTarget ? "Drop to assign conversation" : topicsVisible ? metadata.role : latestTitle}</span>
+            <span className="bot-subtitle block truncate text-[10px] leading-4 text-muted-foreground" title={dropToTop ? undefined : subtitleTitle}>{dropToTop ? "Drop to make top conversation" : subtitle}</span>
           </span>
         </button>
         <BotNewConversationButton name={metadata.name} onClick={onNewConversation} />
@@ -487,7 +491,7 @@ function BotGroup({
       <div id={conversationsId} role="group" aria-label={`Conversations for ${metadata.name}`} className="bot-topics" hidden={!topicsVisible}>
         {topicsVisible ? <ul>{roots.map(renderThread)}</ul> : null}
       </div>
-      {reorderDrag.drag ? createPortal(<div {...portalScope} ref={reorderDrag.ghostRef} className="conversation-drag-ghost rounded-md border border-border bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md" aria-hidden="true"><div className="truncate">{reorderDrag.drag.title}</div><div className="text-[10px] text-muted-foreground">{reorderDrag.target ? reorderDrag.target.position === "inside" ? "Nest conversation" : "Reorder conversation" : "Drag above/below a sibling · Shift to nest"}</div></div>, document.body) : null}
+      {reorderDrag.drag ? createPortal(<div {...portalScope} ref={reorderDrag.ghostRef} className="conversation-drag-ghost rounded-md border border-border bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md" aria-hidden="true"><div className="truncate">{reorderDrag.drag.title}</div><div className="text-[10px] text-muted-foreground">{reorderDrag.target ? reorderDrag.target.botRow ? "Make top conversation" : reorderDrag.target.position === "inside" ? "Nest conversation" : "Reorder conversation" : "Drag above/below a sibling · Shift to nest"}</div></div>, document.body) : null}
     </section>
   );
 }
@@ -598,7 +602,7 @@ function BotsSidebar({ activeThreadId, onNavigate }: PluginThreadListProps) {
   const assignmentRequests = useRef(new Set<string>());
   const conversationDrop = useConversationDrop((thread, botId) => {
     run(async () => {
-      await assignConversation(thread, botId);
+      await assignConversation(thread, botId, true);
       toast.success(`Conversation assigned to ${bots.find(bot => bot.id === botId)?.name ?? "bot"}`, {
         action: { label: "View", onClick: () => { actions.open(thread.id); onNavigate(); } },
       });
@@ -644,11 +648,11 @@ function BotsSidebar({ activeThreadId, onNavigate }: PluginThreadListProps) {
     return orderedBotConversationTree((threadsByBot.get(bot.id) ?? []).filter(thread => !locallyArchived.has(thread.id)), bot.threadOrder).roots[0];
   }
 
-  async function assignConversation(thread: PluginSidebarThread, botId: string) {
+  async function assignConversation(thread: PluginSidebarThread, botId: string, placeFirst = false) {
     if (owners.has(thread.id)) throw new Error("This conversation has already been assigned. Refresh and try again.");
     if (assignmentRequests.current.has(thread.id)) throw new Error("This conversation is already being assigned.");
     assignmentRequests.current.add(thread.id);
-    try { await rpc.call("conversation_assign", { botId, threadId: thread.id }); await refresh(); }
+    try { await rpc.call("conversation_assign", { botId, threadId: thread.id, ...(placeFirst ? { placeFirst: true } : {}) }); await refresh(); }
     finally { assignmentRequests.current.delete(thread.id); }
   }
 
@@ -797,6 +801,7 @@ function BotsSidebar({ activeThreadId, onNavigate }: PluginThreadListProps) {
                 if (draggedBotId && draggedBotId !== botId) run(() => moveBot(draggedBotId, section.id, beforeBotId));
                 setDraggedBotId(null);
               }}><BotGroup metadata={metadata} threads={botThreads} selected={botId === selectedBotId} activeThreadId={activeThreadId} actions={actions} topicsVisible={shownTopicBots.has(botId)}
+                ownedProjectNames={projectOwners.filter(owner => owner.botId === botId).map(owner => projects.find(project => project.id === owner.projectId)?.name ?? "Unavailable project")}
                 onToggleTopics={() => setShownTopicBots((current) => { const next = new Set(current); if (next.has(botId)) next.delete(botId); else next.add(botId); return next; })}
                 onEdit={(tab) => run(() => editBot(metadata, tab))} hidden={hiddenIds.has(botId)}
                 onVisibilityChange={(hiddenUntilActivity) => run(() => rpc.call("visibility_set", { botId, hiddenUntilActivity }).then(refresh))}
@@ -879,7 +884,7 @@ function BotsSidebar({ activeThreadId, onNavigate }: PluginThreadListProps) {
         />
       ) : null}
     </div>
-    {conversationDrop.drag ? createPortal(<div {...portalScope} ref={conversationDrop.ghostRef} className="conversation-drag-ghost rounded-md border border-border bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md" aria-hidden="true"><div className="truncate">{conversationDrop.drag.title}</div><div className="text-[10px] text-muted-foreground">{conversationDrop.drag.botId ? `Assign to ${bots.find(bot => bot.id === conversationDrop.drag?.botId)?.name ?? "bot"}` : "Drop on a bot to assign"}</div></div>, document.body) : null}
+    {conversationDrop.drag ? createPortal(<div {...portalScope} ref={conversationDrop.ghostRef} className="conversation-drag-ghost rounded-md border border-border bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md" aria-hidden="true"><div className="truncate">{conversationDrop.drag.title}</div><div className="text-[10px] text-muted-foreground">{conversationDrop.drag.botId ? `Make top conversation for ${bots.find(bot => bot.id === conversationDrop.drag?.botId)?.name ?? "bot"}` : "Drop on a bot to make its top conversation"}</div></div>, document.body) : null}
     </TooltipProvider>
   );
 }

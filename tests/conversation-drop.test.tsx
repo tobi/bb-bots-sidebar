@@ -18,7 +18,7 @@ const originalHitTest = Object.getOwnPropertyDescriptor(document, "elementFromPo
 beforeEach(() => { split.onPointerDown.mockClear(); hit = null; Object.defineProperty(document, "elementFromPoint", { configurable: true, value: () => hit }); });
 afterEach(() => { cleanup(); if (originalHitTest) Object.defineProperty(document, "elementFromPoint", originalHitTest); else Reflect.deleteProperty(document, "elementFromPoint"); });
 async function mount(fail = false) {
-  const bots = [{ ...bot, id: "atlas", name: "Atlas", mainThreadId: "main-a", linkedProjectIds: [] }, { ...bot, id: "nova", name: "Nova", mainThreadId: "main-b", linkedProjectIds: [] }];
+  const bots = [{ ...bot, id: "atlas", name: "Atlas", mainThreadId: "main-a", linkedProjectIds: [], threadOrder: [] as string[] }, { ...bot, id: "nova", name: "Nova", mainThreadId: "main-b", linkedProjectIds: [], threadOrder: ["main-b"] }];
   const rows = [thread("main-a", 100), thread("main-b", 100), thread("chat", 90), thread("child", 80, { parentThreadId: "chat" }), thread("assigned-child", 70, { parentThreadId: "chat" })];
   const bindings = [{ threadId: "main-a", botId: "atlas" }, { threadId: "main-b", botId: "nova" }, { threadId: "assigned-child", botId: "atlas" }];
   const onNavigate = vi.fn();
@@ -26,7 +26,14 @@ async function mount(fail = false) {
     sidebarThreads: { projects: [{ id: "project", name: "Work project", isPersonal: false }], threads: rows },
     rpc: {
       bots_list: () => ({ bots, personalProjectId, hosts: [], sections: [], projects: [], warnings: [], threadBindings: [...bindings] }),
-      conversation_assign: (value) => { if (fail) throw new Error("Assignment failed; try again"); bindings.push(value as { threadId: string; botId: string }); return { ok: true }; },
+      conversation_assign: (value) => {
+        if (fail) throw new Error("Assignment failed; try again");
+        const { threadId, botId, placeFirst } = value as { threadId: string; botId: string; placeFirst?: boolean };
+        bindings.push({ threadId, botId });
+        const target = bots.find(bot => bot.id === botId)!;
+        if (placeFirst) target.threadOrder = [threadId, ...target.threadOrder.filter(id => id !== threadId)];
+        return { ok: true };
+      },
     },
   });
   await slot.findByText("Atlas");
@@ -43,17 +50,20 @@ it("drags a project-associated private chat onto a bot without prior membership 
   down(source); move(target);
   expect(target.getAttribute("data-conversation-drop")).toBe("true");
   expect(source.parentElement?.getAttribute("data-conversation-dragging")).toBe("true");
-  expect(slot.getByText("Drop to assign conversation")).toBeTruthy();
+  expect(slot.getByText("Drop to make top conversation")).toBeTruthy();
   expect(document.querySelector(".conversation-drag-ghost")).not.toBeNull();
   up(); fireEvent.click(target.querySelector("button")!);
   await waitFor(() => expect(bindings).toContainEqual({ threadId: "chat", botId: "nova" }));
   await waitFor(() => expect(slot.container.querySelector('.recent-row [data-sidebar-thread-id="chat"]')).toBeNull());
-  expect(slot.inspection.rpcCalls.filter(call => call.method === "conversation_assign")).toEqual([{ method: "conversation_assign", input: { threadId: "chat", botId: "nova" } }]);
+  expect(slot.inspection.rpcCalls.filter(call => call.method === "conversation_assign")).toEqual([{ method: "conversation_assign", input: { threadId: "chat", botId: "nova", placeFirst: true } }]);
   expect(slot.inspection.rpcCalls.some(call => call.method === "bots_reorder" || call.method === "main_set")).toBe(false);
   expect(slot.inspection.sidebarActionCalls).toEqual([]); expect(onNavigate).not.toHaveBeenCalled();
   expect(split.onPointerDown).toHaveBeenCalledOnce();
   expect(bindings.find(entry => entry.threadId === "assigned-child")?.botId).toBe("atlas");
   expect(document.querySelector(".conversation-drag-ghost")).toBeNull();
+  expect(target.querySelector(".conversation-disclosure")?.getAttribute("aria-expanded")).toBe("false");
+  fireEvent.click(target.querySelector("button")!);
+  expect(slot.inspection.sidebarActionCalls).toContainEqual({ method: "open", threadId: "chat", options: undefined });
 });
 
 it("Escape cancels the drop and suppresses the eventual release click", async () => {

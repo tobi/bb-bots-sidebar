@@ -1,6 +1,7 @@
 import { afterEach, expect, it } from "vitest";
 import { makeThreadResponse } from "@get-bb/plugin-sdk/testing";
 import { backend, PERSONAL_ID, project } from "./backend-fixture";
+import { listBotConversations } from "../lib/bot-conversations";
 
 const instances: Awaited<ReturnType<typeof backend>>[] = [];
 afterEach(async () => { await Promise.all(instances.splice(0).map(host => host.harness.lifecycle.dispose())); });
@@ -8,6 +9,36 @@ async function setup() { const host = await backend([project(), project("other")
 function addThread(host: Awaited<ReturnType<typeof backend>>, id: string, projectId = "project", parentThreadId: string | null = null) {
   const value = makeThreadResponse({ id, projectId, parentThreadId, createdAt: 1, title: "Private conversation", originPluginId: null }); host.threads.set(id, value); return value;
 }
+
+it.each(["project", PERSONAL_ID])("puts a dropped %s chat first durably, preserving existing order and thread data", async projectId => {
+  const host = await setup(); const bot = await host.create("Target", []);
+  for (const id of ["old-first", "old-second"]) { addThread(host, id, PERSONAL_ID); host.store.bind(id, bot.id); }
+  host.store.mutate(bot.id, current => ({ ...current, threadOrder: ["old-second", "old-first"] }));
+  addThread(host, "unassigned-parent", projectId);
+  const chat = addThread(host, "chat", projectId, "unassigned-parent");
+  await host.harness.behavior.callRpc("conversation_assign", { botId: bot.id, threadId: chat.id, placeFirst: true });
+  await host.reload();
+  const saved = host.store.require(bot.id);
+  expect(saved.threadOrder).toEqual(["chat", "old-second", "old-first"]);
+  expect(saved.linkedProjectIds).toEqual(projectId === PERSONAL_ID ? [] : ["project"]);
+  expect(saved.mainThreadId).toBe(bot.mainThreadId);
+  expect(host.threads.get(chat.id)).toEqual(chat);
+  expect((await listBotConversations(host.bb, saved, async id => host.store.owner(id))).roots[0]?.id).toBe(chat.id);
+  expect(host.harness.inspection.sdk.callsTo("threads.update")).toEqual([]);
+});
+
+it("does not change ordering when ordinary dialog assignment omits placeFirst", async () => {
+  const host = await setup(); const bot = await host.create(); addThread(host, "chat");
+  await host.harness.behavior.callRpc("conversation_assign", { botId: bot.id, threadId: "chat" });
+  expect(host.store.require(bot.id).threadOrder).toBeUndefined();
+});
+
+it("rejects promoting an archived chat without binding, joining, or ordering", async () => {
+  const host = await setup(); const bot = await host.create("Target", []); const chat = addThread(host, "chat");
+  host.threads.set(chat.id, { ...chat, archivedAt: 1 });
+  await expect(host.harness.behavior.callRpc("conversation_assign", { botId: bot.id, threadId: chat.id, placeFirst: true })).rejects.toThrow(/Restore/);
+  expect(host.store.require(bot.id)).toEqual(bot); expect(host.store.owner(chat.id)).toBeNull();
+});
 
 it("assigns an unlinked work-project chat, joins the chosen bot as Member, and changes no conversation data", async () => {
   const host = await setup(); const owner = await host.create("Owner"); const target = await host.create("Target", []);
@@ -59,7 +90,7 @@ it("keeps binding and membership atomic if another owner appears during validati
     if (args?.includePersonal) return [...host.projects, { ...project(PERSONAL_ID), kind: "personal", sources: [] }];
     arrived(); await gate; return host.projects;
   });
-  const assigning = host.harness.behavior.callRpc("conversation_assign", { botId: second.id, threadId: "chat" });
+  const assigning = host.harness.behavior.callRpc("conversation_assign", { botId: second.id, threadId: "chat", placeFirst: true });
   await started; host.store.bind("chat", first.id); release();
   await expect(assigning).rejects.toThrow(/another bot/);
   expect(host.store.owner("chat")).toBe(first.id); expect(host.store.require(second.id)).toEqual(second);

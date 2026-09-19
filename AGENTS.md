@@ -74,16 +74,23 @@ or reintroduce hover toolbars when making unrelated changes.
 - Clicking a bot opens its first ordered top-level conversation without changing
   expansion. No special main UI: legacy main pointers remain compatibility data.
   A separate end chevron toggles the whole list and counts all top-level roots.
+  Double-clicking the bot name/avatar also toggles the list; the first click
+  retains normal navigation, without repeating it on the second click.
   Bots start collapsed; navigation and assignment never automatically expand them.
   Explicit expansion shows all roots, including the former main. Children retain
   independent disclosure; reveal active ancestor paths only within an expanded bot.
 - Drag above/below a sibling to reorder it, or use Move to top in its context menu.
+  Dropping a Chat on a bot atomically assigns and places it first; dropping an
+  existing root on its own bot row moves it first. Hint: Drop to make top conversation.
   Shift-drop retains nesting. Persist threadOrder privately in the plugin DB;
   manual order wins, unplaced roots/siblings follow newest-created first. Activity,
   unread state, pinning, and navigation never reshuffle them. No bot-root overflow.
   Do not change bindings, parents, projects, environments, or historical main
-  pointers to reorder. Click target, preview, activity badge, project defaults,
+  pointers to reorder. Click target, activity badge, project defaults,
   and default bot-message destination use the same first visible root.
+  Bot rows retain the bot name and role/title, followed by owned project names
+  in the subtitle. Never substitute a conversation title or show member-only
+  projects as owned. Keep this label stable when folding; truncate with full hover text.
 - Counts/chevrons never navigate. No Topics/Main's children labels or divider.
   No multi-action hover overlay toolbars. Conversation rows may show one inline
   archive button on hover/keyboard focus (always available on touch), immediately

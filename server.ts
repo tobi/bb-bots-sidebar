@@ -367,8 +367,9 @@ export default async function plugin(bb: BbPluginApi) {
       publish();
       return { ok: true } as const;
     }),
-    conversation_assign: ({ botId, threadId }) => serial("registry", () => serial(botId, async () => {
+    conversation_assign: ({ botId, threadId, placeFirst }) => serial("registry", () => serial(botId, async () => {
       const bot = store.require(botId); const thread = await bb.sdk.threads.get({ threadId });
+      if (thread.archivedAt || thread.deletedAt) throw new Error("Restore this conversation before assigning it.");
       const existing = await resolveOwner(threadId, false);
       if (existing && existing !== botId) throw new Error("Conversation already belongs to another bot");
       if (store.owner(threadId) === botId) return { ok: true } as const;
@@ -376,7 +377,7 @@ export default async function plugin(bb: BbPluginApi) {
       if (needsLink) await validateLinks([thread.projectId]);
       // Membership and the new association commit together; a competing binding
       // must win without leaving an unwanted membership behind.
-      const assigned = store.adoptInherited(threadId, botId, needsLink ? thread.projectId : null);
+      const assigned = store.adoptInherited(threadId, botId, needsLink ? thread.projectId : null, placeFirst);
       if (assigned.botId !== botId) throw new Error("Conversation already belongs to another bot");
       if (assigned.joined) await state.mirror(store.require(botId));
       if (assigned.changed) publish();
