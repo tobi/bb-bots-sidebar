@@ -291,6 +291,7 @@ interface PersistentResponsiveDrawerShellProps {
 const PERSISTENT_DRAWER_EASING = "cubic-bezier(0.32, 0.72, 0, 1)";
 const PERSISTENT_DRAWER_CLOSE_RATIO = 0.25;
 const PERSISTENT_DRAWER_CLOSE_VELOCITY_PX_PER_SEC = 450;
+const PERSISTENT_DRAWER_KEYBOARD_THRESHOLD_PX = 60;
 const PERSISTENT_DRAWER_FOCUSABLE_SELECTOR = [
   "a[href]",
   "button:not([disabled])",
@@ -519,6 +520,8 @@ export function PersistentResponsiveDrawerShell({
   const panelRef = React.useRef<HTMLDivElement>(null);
   const backdropRef = React.useRef<HTMLDivElement>(null);
   const dragRef = React.useRef<PersistentDrawerDrag | null>(null);
+  const keyboardOpenRef = React.useRef(false);
+  const drawerHeightBeforeKeyboardRef = React.useRef<number | null>(null);
   const settledStateRef = React.useRef<boolean | null>(null);
   const labelId = React.useId();
   const portalScopeProps = usePortalScopeProps();
@@ -583,9 +586,111 @@ export function PersistentResponsiveDrawerShell({
     [backdropTransition, transition],
   );
 
+  React.useLayoutEffect(() => {
+    const panel = panelRef.current;
+    if (!open || panel === null) {
+      keyboardOpenRef.current = false;
+      drawerHeightBeforeKeyboardRef.current = null;
+      resetDrawerKeyboardStyles(panel);
+      return;
+    }
+
+    const ownerWindow = panel.ownerDocument.defaultView;
+    const visualViewport = ownerWindow?.visualViewport;
+    if (
+      ownerWindow === null ||
+      ownerWindow === undefined ||
+      visualViewport == null
+    ) {
+      return;
+    }
+
+    let frame: number | null = null;
+    const updateForVisualViewport = () => {
+      if (frame !== null) {
+        ownerWindow.cancelAnimationFrame(frame);
+      }
+      frame = ownerWindow.requestAnimationFrame(() => {
+        frame = null;
+        const layoutHeight = ownerWindow.innerHeight;
+        const heightReduction = layoutHeight - visualViewport.height;
+        const keyboardOpen =
+          heightReduction > PERSISTENT_DRAWER_KEYBOARD_THRESHOLD_PX;
+
+        if (!keyboardOpen) {
+          resetDrawerKeyboardStyles(panel);
+          keyboardOpenRef.current = false;
+          const currentHeight = panel.getBoundingClientRect().height;
+          drawerHeightBeforeKeyboardRef.current =
+            currentHeight > 0 ? currentHeight : null;
+          return;
+        }
+
+        if (!keyboardOpenRef.current) {
+          const currentHeight = panel.getBoundingClientRect().height;
+          drawerHeightBeforeKeyboardRef.current =
+            currentHeight > 0 ? currentHeight : null;
+        }
+        keyboardOpenRef.current = true;
+        dragRef.current = null;
+        setDragPosition(
+          0,
+          Math.max(drawerHeightBeforeKeyboardRef.current ?? 0, 1),
+          true,
+        );
+
+        const bottomInset = Math.max(
+          0,
+          layoutHeight - visualViewport.height - visualViewport.offsetTop,
+        );
+        const drawerHeight = Math.min(
+          drawerHeightBeforeKeyboardRef.current ?? visualViewport.height,
+          visualViewport.height,
+        );
+        panel.style.bottom = `${bottomInset}px`;
+        panel.style.height = `${Math.max(0, drawerHeight)}px`;
+
+        const activeElement = panel.ownerDocument.activeElement;
+        if (
+          activeElement instanceof HTMLElement &&
+          panel.contains(activeElement) &&
+          typeof activeElement.scrollIntoView === "function"
+        ) {
+          const activeRect = activeElement.getBoundingClientRect();
+          const visibleTop = visualViewport.offsetTop;
+          const visibleBottom = visibleTop + visualViewport.height;
+          if (
+            activeRect.top < visibleTop ||
+            activeRect.bottom > visibleBottom
+          ) {
+            activeElement.scrollIntoView({ block: "nearest" });
+          }
+        }
+      });
+    };
+
+    const initialHeight = panel.getBoundingClientRect().height;
+    drawerHeightBeforeKeyboardRef.current =
+      initialHeight > 0 ? initialHeight : null;
+    updateForVisualViewport();
+    visualViewport.addEventListener("resize", updateForVisualViewport);
+    visualViewport.addEventListener("scroll", updateForVisualViewport);
+
+    return () => {
+      visualViewport.removeEventListener("resize", updateForVisualViewport);
+      visualViewport.removeEventListener("scroll", updateForVisualViewport);
+      if (frame !== null) {
+        ownerWindow.cancelAnimationFrame(frame);
+      }
+      keyboardOpenRef.current = false;
+      drawerHeightBeforeKeyboardRef.current = null;
+      resetDrawerKeyboardStyles(panel);
+    };
+  }, [open, setDragPosition]);
+
   const handleDragStart = React.useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
-      if (!open || event.button !== 0) {
+      if (!open || keyboardOpenRef.current || event.button !== 0) {
         return;
       }
       event.currentTarget.setPointerCapture(event.pointerId);
