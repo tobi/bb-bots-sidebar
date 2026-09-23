@@ -101,15 +101,16 @@ export function createBotStore(bb: BbPluginApi) {
         return saveWithProjects(update(current), desiredOwners);
       }).immediate();
     },
-    adoptInherited(threadId: string, botId: string, projectId: string | null, placeFirst = false) {
+    adoptInherited(threadId: string, botId: string, projectId: string | null, placeFirst = false, appendAfter?: string[]) {
       return db.transaction(() => {
         const existing = owner(threadId);
         if (existing) return { botId: existing, changed: false, joined: false };
         const bot = get(botId); if (!bot) throw new Error("Bot no longer exists");
         const joined = projectId !== null && !bot.linkedProjectIds.includes(projectId);
-        if (joined || placeFirst) saveWithProjects({ ...bot,
+        if (joined || placeFirst || appendAfter) saveWithProjects({ ...bot,
           linkedProjectIds: joined ? [...bot.linkedProjectIds, projectId!] : bot.linkedProjectIds,
           ...(placeFirst ? { threadOrder: [threadId, ...(bot.threadOrder ?? []).filter(id => id !== threadId)] } : {}),
+          ...(appendAfter ? { threadOrder: [...new Set([...(bot.threadOrder ?? []), ...appendAfter].filter(id => id !== threadId)), threadId] } : {}),
           updatedAt: nextTimestamp(bot.updatedAt),
         });
         bind(threadId, botId);

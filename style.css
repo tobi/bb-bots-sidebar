@@ -141,9 +141,8 @@
 .recent-row[data-conversation-dragging="true"] { opacity: 0.45; }
 .bots-sidebar[data-conversation-dragging="true"] :is(a, button, .project-row) { cursor: grabbing; }
 .bots-sidebar[data-conversation-dragging="true"] .project-row[data-conversation-drop="true"] {
-  outline: 2px solid var(--ring);
-  outline-offset: -2px;
-  background: var(--state-active);
+  box-shadow: inset 0 0 0 1px var(--border);
+  background: var(--state-hover, var(--state-active));
 }
 .conversation-drag-ghost {
   position: fixed;
@@ -153,6 +152,19 @@
   max-width: min(18rem, calc(100vw - 24px));
   pointer-events: none;
 }
+.bots-sidebar[data-conversation-dragging="true"] :is([data-bot-drop-first], [data-bot-drop-append])[data-drop-active="true"] {
+  border-radius: 0.375rem;
+  background: var(--state-active);
+}
+.bots-sidebar[data-conversation-dragging="true"] [data-bot-drop-first][data-drop-active="true"] {
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+.bots-sidebar[data-conversation-dragging="true"] [data-bot-drop-append][data-drop-active="true"] {
+  box-shadow: 4px 0 0 var(--state-active), -4px 0 0 var(--state-active);
+}
+.bots-sidebar[data-conversation-dragging="true"] .project-row[data-conversation-drop="true"] .bot-subtitle {
+  color: var(--foreground);
+}
 .bot-new-conversation { opacity: 0; pointer-events: none; }
 .project-row:hover > .bot-new-conversation,
 .project-row:has(:focus-visible) > .bot-new-conversation,
@@ -161,6 +173,10 @@
   pointer-events: auto;
 }
 .conversation-archive { opacity: 0; pointer-events: none; }
+.bots-sidebar[data-conversation-dragging="true"] .project-row > .bot-new-conversation {
+  opacity: 0;
+  pointer-events: none;
+}
 .thread-row:hover > .conversation-archive,
 .thread-row:has(:focus-visible) > .conversation-archive,
 .recent-row:hover > .conversation-archive,

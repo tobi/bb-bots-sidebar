@@ -27,6 +27,29 @@ it.each(["project", PERSONAL_ID])("puts a dropped %s chat first durably, preserv
   expect(host.harness.inspection.sdk.callsTo("threads.update")).toEqual([]);
 });
 
+it.each(["project", PERSONAL_ID])("appends an outside %s chat after ranked and unranked roots durably", async projectId => {
+  const host = await setup(); const bot = await host.create("Target", []);
+  for (const id of ["ranked", "unranked-a", "unranked-b"]) { addThread(host, id, PERSONAL_ID); host.store.bind(id, bot.id); }
+  host.store.mutate(bot.id, current => ({ ...current, threadOrder: ["ranked"] }));
+  const chat = addThread(host, "chat", projectId);
+  const before = (await listBotConversations(host.bb, host.store.require(bot.id), async id => host.store.owner(id))).roots.map(row => row.id);
+  await host.harness.behavior.callRpc("conversation_assign", { botId: bot.id, threadId: chat.id, placeFirst: false });
+  await host.reload();
+  const saved = host.store.require(bot.id);
+  expect((await listBotConversations(host.bb, saved, async id => host.store.owner(id))).roots.map(row => row.id)).toEqual([...before, chat.id]);
+  expect(saved.linkedProjectIds).toEqual(projectId === PERSONAL_ID ? [] : ["project"]);
+  expect(saved.mainThreadId).toBe(bot.mainThreadId);
+  expect(host.threads.get(chat.id)).toEqual(chat);
+  expect(host.harness.inspection.sdk.callsTo("threads.update")).toEqual([]);
+});
+
+it("serializes append drops to an empty bot", async () => {
+  const host = await setup(); const bot = await host.create("Target", []);
+  for (const id of ["one", "two"]) addThread(host, id, PERSONAL_ID);
+  await Promise.all(["one", "two"].map(threadId => host.harness.behavior.callRpc("conversation_assign", { botId: bot.id, threadId, placeFirst: false })));
+  expect(host.store.require(bot.id).threadOrder).toEqual(["one", "two"]);
+});
+
 it("does not change ordering when ordinary dialog assignment omits placeFirst", async () => {
   const host = await setup(); const bot = await host.create(); addThread(host, "chat");
   await host.harness.behavior.callRpc("conversation_assign", { botId: bot.id, threadId: "chat" });

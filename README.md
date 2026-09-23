@@ -153,7 +153,10 @@ in bot state.
   project as a member if needed. Projectless chats need no project link. History,
   project, environment and existing child assignments stay unchanged. A drop does
   not navigate away; use the confirmation's **View** action to open it.
-  Dropping on a bot also makes the conversation first in its list. Drop an
+  Dropping on a bot's face makes the conversation first; the rest of the row
+  appends it. Both unfold the list immediately after assignment and scroll the
+  added conversation into view. Hold Shift anywhere on the row to
+  put it first instead (also unfolding the list). Drop an
   existing top-level conversation on its own bot row to move it to the top.
 - Hover a conversation row to reveal its archive button, also available on
   keyboard focus and touch. It sits inline before the child count, never covering

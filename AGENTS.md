@@ -76,12 +76,18 @@ or reintroduce hover toolbars when making unrelated changes.
   A separate end chevron toggles the whole list and counts all top-level roots.
   Double-clicking the bot name/avatar also toggles the list; the first click
   retains normal navigation, without repeating it on the second click.
-  Bots start collapsed; navigation and assignment never automatically expand them.
+  Bots start collapsed; navigation and dialog assignment never automatically expand them.
+  Successful outside conversation drops immediately unfold the destination bot,
+  then scroll the added conversation into view when the refreshed list renders.
   Explicit expansion shows all roots, including the former main. Children retain
   independent disclosure; reveal active ancestor paths only within an expanded bot.
 - Drag above/below a sibling to reorder it, or use Move to top in its context menu.
-  Dropping a Chat on a bot atomically assigns and places it first; dropping an
-  existing root on its own bot row moves it first. Hint: Drop to make top conversation.
+  Dropping a Chat on a bot's avatar makes it first; the rest of the row atomically
+  assigns and appends it. Highlight the two drop zones while dragging. Shift-drop places it
+  first instead. Both unfold the destination. Dropping an existing root on its own
+  bot row moves it first. Short row hints: Add to end / Make first; longer help
+  belongs in the drag ghost. Use a single subtle row boundary and filled active
+  zone, not nested outlines or dashed avatar borders. Hide the row + during dragging.
   Shift-drop retains nesting. Persist threadOrder privately in the plugin DB;
   manual order wins, unplaced roots/siblings follow newest-created first. Activity,
   unread state, pinning, and navigation never reshuffle them. No bot-root overflow.

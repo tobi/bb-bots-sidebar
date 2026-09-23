@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { PluginSidebarThread } from "@get-bb/plugin-sdk/app";
 
-type DragState = { threadId: string; title: string; botId: string | null };
+type DragState = { threadId: string; title: string; botId: string | null; shiftKey: boolean };
 
 /** Pointer-based so BB's drag-to-split can still take over outside the sidebar. */
-export function useConversationDrop(onDrop: (thread: PluginSidebarThread, botId: string) => void, canDrop: (botId: string) => boolean,
+export function useConversationDrop(onDrop: (thread: PluginSidebarThread, botId: string, shiftKey: boolean) => void, canDrop: (botId: string) => boolean,
   getTarget?: (thread: PluginSidebarThread, element: Element, x: number, y: number, shiftKey: boolean) => string | null) {
   const [drag, setDrag] = useState<DragState | null>(null);
   const ghostRef = useRef<HTMLDivElement>(null);
@@ -46,6 +46,7 @@ export function useConversationDrop(onDrop: (thread: PluginSidebarThread, botId:
     let engaged = false;
     let targetId: string | null = null;
     let ended = false;
+    let shiftKey = event.shiftKey;
     const title = thread.title ?? thread.titleFallback ?? "Untitled conversation";
     function targetAt(x: number, y: number, shiftKey = false) {
       const element = document.elementFromPoint(x, y);
@@ -62,10 +63,18 @@ export function useConversationDrop(onDrop: (thread: PluginSidebarThread, botId:
       window.removeEventListener("pointercancel", cancelled);
       window.removeEventListener("blur", cancelled);
       document.removeEventListener("keydown", key);
+      document.removeEventListener("keyup", key);
       cancel.current = null; setDrag(null);
     }
     function cancelled() { cleanup(); }
-    function key(event: KeyboardEvent) { if (event.key === "Escape") { if (engaged) guardCancelledRelease(start.pointerId); cleanup(); } }
+    function key(event: KeyboardEvent) {
+      if (event.key === "Escape") { if (engaged) guardCancelledRelease(start.pointerId); cleanup(); }
+      else if (event.key === "Shift" && engaged) {
+        shiftKey = event.shiftKey;
+        targetId = targetAt(position.current.x, position.current.y, shiftKey);
+        setDrag({ threadId: thread.id, title, botId: targetId, shiftKey });
+      }
+    }
     function move(event: PointerEvent) {
       if (ended || event.pointerId !== start.pointerId) return;
       if (!(event.buttons & 1)) { cancelled(); return; }
@@ -73,7 +82,7 @@ export function useConversationDrop(onDrop: (thread: PluginSidebarThread, botId:
       const first = !engaged; engaged = true;
       event.preventDefault(); position.current = { x: event.clientX, y: event.clientY }; moveGhost();
       const next = targetAt(event.clientX, event.clientY, event.shiftKey);
-      if (first || next !== targetId) { targetId = next; setDrag({ threadId: thread.id, title, botId: next }); }
+      if (first || next !== targetId || shiftKey !== event.shiftKey) { shiftKey = event.shiftKey; targetId = next; setDrag({ threadId: thread.id, title, botId: next, shiftKey }); }
     }
     function up(event: PointerEvent) {
       if (ended || event.pointerId !== start.pointerId) return;
@@ -81,7 +90,7 @@ export function useConversationDrop(onDrop: (thread: PluginSidebarThread, botId:
       // hover/highlight rather than assigning to an unseen replacement target.
       const dropped = engaged && targetId && targetAt(event.clientX, event.clientY, event.shiftKey) === targetId ? targetId : null;
       if (engaged) swallowClick(); cleanup();
-      if (dropped) callbacks.current.onDrop(thread, dropped);
+      if (dropped) callbacks.current.onDrop(thread, dropped, event.shiftKey);
     }
     cancel.current = cancelled;
     window.addEventListener("pointermove", move, { passive: false });
@@ -89,6 +98,7 @@ export function useConversationDrop(onDrop: (thread: PluginSidebarThread, botId:
     window.addEventListener("pointercancel", cancelled);
     window.addEventListener("blur", cancelled);
     document.addEventListener("keydown", key);
+    document.addEventListener("keyup", key);
   }
   return { drag, ghostRef, begin };
 }

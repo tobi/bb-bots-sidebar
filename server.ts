@@ -377,7 +377,10 @@ export default async function plugin(bb: BbPluginApi) {
       if (needsLink) await validateLinks([thread.projectId]);
       // Membership and the new association commit together; a competing binding
       // must win without leaving an unwanted membership behind.
-      const assigned = store.adoptInherited(threadId, botId, needsLink ? thread.projectId : null, placeFirst);
+      // Explicit false is an outside drop at the end; omitted preserves dialog ordering.
+      const appendAfter = placeFirst === false
+        ? (await listBotConversations(bb, store.require(botId), resolveOwner)).rows.map(row => row.id) : undefined;
+      const assigned = store.adoptInherited(threadId, botId, needsLink ? thread.projectId : null, placeFirst, appendAfter);
       if (assigned.botId !== botId) throw new Error("Conversation already belongs to another bot");
       if (assigned.joined) await state.mirror(store.require(botId));
       if (assigned.changed) publish();
