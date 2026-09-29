@@ -32,6 +32,7 @@ const environment = z.discriminatedUnion("type", [
   }).strict(),
   z.object({ type: z.literal("reuse"), environmentId: id }).strict(),
   z.object({ type: z.literal("project-default") }).strict(),
+  z.object({ type: z.literal("provider") }).passthrough(),
   z.object({
     type: z.literal("host"), hostId: id.optional(),
     workspace: z.discriminatedUnion("type", [
