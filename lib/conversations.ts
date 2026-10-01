@@ -3,6 +3,35 @@ import { orderConversations } from "./conversation-order";
 
 const WORKING_INDICATORS = new Set(["runtime", "workflow", "background-agent", "background-command", "plan-mode", "goal", "working-draft"]);
 
+// Chat rows say where a conversation runs: the project first, then the branch
+// (or the machine when there is no branch). Only the live sidebar catalog knows
+// personal projects, so it supplies the names.
+export function conversationProjectLabels(
+  projects: readonly { id: string; name: string; isPersonal: boolean }[],
+): Map<string, string> {
+  const labels = new Map<string, string>();
+  for (const project of projects) {
+    const name = project.name.trim();
+    if (name) labels.set(project.id, name);
+  }
+  return labels;
+}
+
+// Kept apart so a row can elide a long project name while the branch stays
+// readable: the project is the variable-length part, the branch is not.
+export function conversationDetailParts(
+  thread: PluginSidebarThread,
+  projectName: string | null | undefined,
+): { project: string | null; branch: string | null } {
+  return { project: projectName?.trim() || null, branch: thread.environment?.branchName ?? thread.host?.name ?? null };
+}
+
+export function conversationDetail(thread: PluginSidebarThread, projectName: string | null | undefined): string {
+  const { project, branch } = conversationDetailParts(thread, projectName);
+  const parts = [project, branch].filter(Boolean);
+  return parts.length ? parts.join(" \u00b7 ") : "Personal conversation";
+}
+
 export function isWorking(thread: PluginSidebarThread): boolean {
   return WORKING_INDICATORS.has(thread.indicator) || Object.values(thread.activity).some((count) => count > 0);
 }

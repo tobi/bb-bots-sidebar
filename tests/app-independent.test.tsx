@@ -109,8 +109,13 @@ describe("independent bot identities", () => {
     expect(within(firstGroup).getByText("Conversation first-child")).toBeTruthy();
     expect(within(firstGroup).queryByText("Conversation second-root")).toBeNull();
     expect(within(firstGroup).queryByText("Conversation explicit-override")).toBeNull();
-    expect(slot.queryByText("Brand new unrelated project")).toBeNull();
-    expect(slot.queryByText("Legacy backing project")).toBeNull();
+    // Bot subtitles list only owned projects, so a member-only or unrelated
+    // project name never shows under a bot. The Chats rows label their own
+    // conversation with its project, so scope this guard to the bot groups.
+    expect(within(firstGroup).queryByText("Brand new unrelated project")).toBeNull();
+    expect(within(secondGroup).queryByText("Brand new unrelated project")).toBeNull();
+    expect(within(firstGroup).queryByText("Legacy backing project")).toBeNull();
+    expect(within(secondGroup).queryByText("Legacy backing project")).toBeNull();
     expect(secondGroup.querySelector('[aria-current="page"]')).toBeNull();
     // Both bot lists were explicitly expanded in the fixture.
     expect(within(secondGroup).getByText("Conversation second-root")).toBeTruthy();

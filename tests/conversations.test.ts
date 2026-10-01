@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { conversationOwners, conversationTree } from "../lib/conversations";
+import { conversationDetail, conversationDetailParts, conversationOwners, conversationProjectLabels, conversationTree } from "../lib/conversations";
 import { thread } from "./fixtures";
 
 const rows = () => Array.from({ length: 10 }, (_, i) => thread(String(i), 100 - i));
@@ -91,5 +91,35 @@ describe("conversation folding", () => {
     expect(ids(result.roots)).toEqual(["orphan"]);
     expect(ids(result.mainChildren)).toEqual(["main-child"]);
     expect(ids(result.childrenByParent.get("main")!)).toEqual(["main-child"]);
+  });
+});
+
+describe("conversation row detail", () => {
+  it("shows the project name next to the branch", () => {
+    expect(conversationDetail(thread("a", 1), "bb-bots-sidebar")).toBe("bb-bots-sidebar · feature");
+  });
+  it("falls back to the machine name without a branch, and keeps personal conversations readable", () => {
+    const noBranch = thread("b", 1, { environment: { id: "env", name: null, branchName: null, providerId: null, workspaceDisplayKind: null }, host: { id: "h", name: "Laptop" } });
+    expect(conversationDetail(noBranch, "Personal")).toBe("Personal · Laptop");
+    const bare = thread("c", 1, { environment: null, host: null });
+    expect(conversationDetail(bare, null)).toBe("Personal conversation");
+    expect(conversationDetail(thread("d", 1), "  ")).toBe("feature");
+  });
+  it("labels only projects with a name", () => {
+    const labels = conversationProjectLabels([
+      { id: "project", name: "bb-bots-sidebar", isPersonal: false },
+      { id: "personal", name: "Personal", isPersonal: true },
+      { id: "blank", name: "  ", isPersonal: false },
+    ]);
+    expect([...labels]).toEqual([["project", "bb-bots-sidebar"], ["personal", "Personal"]]);
+  });
+});
+
+describe("conversation detail parts", () => {
+  it("keeps the project and the branch separate for row rendering", () => {
+    expect(conversationDetailParts(thread("a", 1), "bb-bots-sidebar")).toEqual({ project: "bb-bots-sidebar", branch: "feature" });
+    const noBranch = thread("b", 1, { environment: { id: "env", name: null, branchName: null, providerId: null, workspaceDisplayKind: null }, host: { id: "h", name: "Laptop" } });
+    expect(conversationDetailParts(noBranch, "Personal")).toEqual({ project: "Personal", branch: "Laptop" });
+    expect(conversationDetailParts(thread("c", 1), null)).toEqual({ project: null, branch: "feature" });
   });
 });

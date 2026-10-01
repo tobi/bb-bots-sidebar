@@ -21,7 +21,7 @@ import type {
   PluginThreadListProps,
 } from "@get-bb/plugin-sdk/app";
 import type { BotAvatar, BotMetadata, BotSection, ProjectOwner, rpcContract } from "./contract";
-import { orderedBotConversationTree, conversationOwners, conversationTree } from "./lib/conversations";
+import { conversationDetail, conversationDetailParts, conversationProjectLabels, orderedBotConversationTree, conversationOwners, conversationTree } from "./lib/conversations";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -497,6 +497,20 @@ function BotGroup({
   );
 }
 
+// A long project name elides at a fixed width; the branch or machine after it
+// takes everything left and elides only when it truly runs out. The project
+// never shrinks below its own cap, otherwise a long branch would squeeze it down
+// to a single leftover character instead of showing an ellipsis.
+function ConversationDetail({ thread, projectName }: { thread: PluginSidebarThread; projectName: string | undefined }) {
+  const { project, branch } = conversationDetailParts(thread, projectName);
+  const label = conversationDetail(thread, projectName);
+  if (!project) return <span className="block truncate text-[8px] leading-[10px] text-muted-foreground" title={label}>{label}</span>;
+  return <span className="flex min-w-0 items-baseline gap-1 text-[8px] leading-[10px] text-muted-foreground" title={label}>
+    <span className="max-w-[12ch] shrink-0 truncate">{project}</span>
+    {branch ? <><span className="shrink-0">{"\u00b7"}</span><span className="min-w-0 flex-1 truncate">{branch}</span></> : null}
+  </span>;
+}
+
 function RecentRow({
   thread,
   childrenByParent,
@@ -508,6 +522,7 @@ function RecentRow({
   onConversationDrag,
   onArchive,
   draggingThreadId,
+  projectLabels,
 }: {
   thread: PluginSidebarThread;
   childrenByParent: Map<string, PluginSidebarThread[]>;
@@ -519,12 +534,12 @@ function RecentRow({
   onConversationDrag: (thread: PluginSidebarThread, event: ReactPointerEvent<HTMLElement>) => void;
   onArchive: (threadId: string) => void;
   draggingThreadId: string | null;
+  projectLabels: Map<string, string>;
 }) {
   const split = experimental_useSidebarThreadSplit(thread.id);
   const children = childrenByParent.get(thread.id) ?? [];
   const branch = useConversationBranch(thread.id, activeThreadId, activePath);
   const title = thread.title ?? thread.titleFallback ?? "Untitled conversation";
-  const detail = thread.environment?.branchName ?? thread.host?.name ?? "Personal conversation";
   return (
     <li>
       <ConversationContextMenu thread={thread} actions={actions} onNavigate={onNavigate} items={[{ label: "Assign to bot…", action: () => onAssign(thread) }]}>
@@ -553,14 +568,14 @@ function RecentRow({
           <span className="flex items-baseline gap-2">
             <span className="min-w-0 flex-1 truncate text-[10px] font-medium leading-3 text-foreground">{title}</span>
           </span>
-          <span className="block truncate text-[8px] leading-[10px] text-muted-foreground">{detail}</span>
+          <ConversationDetail thread={thread} projectName={projectLabels.get(thread.projectId)} />
         </span>
       </a>
       <ConversationArchiveButton thread={thread} actions={actions} onArchive={onArchive} />
       <BranchToggle title={title} count={children.length} expanded={branch.expanded} childrenId={branch.childrenId} onToggle={branch.toggle} />
       </div>
       </ConversationContextMenu>
-      {children.length ? <ul id={branch.childrenId} className="conversation-children" hidden={!branch.expanded}>{branch.expanded ? children.map((child) => <RecentRow key={child.id} thread={child} childrenByParent={childrenByParent} activePath={activePath} actions={actions} activeThreadId={activeThreadId} onNavigate={onNavigate} onAssign={onAssign} onConversationDrag={onConversationDrag} draggingThreadId={draggingThreadId} onArchive={onArchive} />) : null}</ul> : null}
+      {children.length ? <ul id={branch.childrenId} className="conversation-children" hidden={!branch.expanded}>{branch.expanded ? children.map((child) => <RecentRow key={child.id} thread={child} childrenByParent={childrenByParent} activePath={activePath} actions={actions} activeThreadId={activeThreadId} onNavigate={onNavigate} onAssign={onAssign} onConversationDrag={onConversationDrag} draggingThreadId={draggingThreadId} onArchive={onArchive} projectLabels={projectLabels} />) : null}</ul> : null}
     </li>
   );
 }
@@ -612,6 +627,7 @@ function BotsSidebar({ activeThreadId, onNavigate }: PluginThreadListProps) {
   }, [projectCatalog, refresh]);
   const wakeups = useRef(new Set<string>());
   const owners = useMemo(() => conversationOwners(sidebar.threads, threadBindings), [sidebar.threads, threadBindings]);
+  const projectLabels = useMemo(() => conversationProjectLabels(sidebar.projects), [sidebar.projects]);
   const assignmentRequests = useRef(new Set<string>());
   const conversationDrop = useConversationDrop((thread, value) => {
     const { botId, placeFirst } = JSON.parse(value) as { botId: string; placeFirst: boolean };
@@ -793,7 +809,7 @@ function BotsSidebar({ activeThreadId, onNavigate }: PluginThreadListProps) {
     sidebar.threads.filter((thread) => !owners.has(thread.id) && !locallyArchived.has(thread.id)),
     null, activeThreadId, 8,
   ), [sidebar.threads, owners, activeThreadId, locallyArchived]);
-  const renderChat = (thread: PluginSidebarThread) => <RecentRow key={thread.id} thread={thread} childrenByParent={chatsTree.childrenByParent} activePath={chatsTree.activePath} actions={actions} activeThreadId={activeThreadId} onNavigate={onNavigate} onAssign={setAssigning} onConversationDrag={(row, event) => { if (!owners.has(row.id) && !assignmentRequests.current.has(row.id)) conversationDrop.begin(row, event); }} draggingThreadId={conversationDrop.drag?.threadId ?? null} onArchive={archiveThread} />;
+  const renderChat = (thread: PluginSidebarThread) => <RecentRow key={thread.id} thread={thread} childrenByParent={chatsTree.childrenByParent} activePath={chatsTree.activePath} actions={actions} activeThreadId={activeThreadId} onNavigate={onNavigate} onAssign={setAssigning} onConversationDrag={(row, event) => { if (!owners.has(row.id) && !assignmentRequests.current.has(row.id)) conversationDrop.begin(row, event); }} draggingThreadId={conversationDrop.drag?.threadId ?? null} onArchive={archiveThread} projectLabels={projectLabels} />;
   return (
     <TooltipProvider>
     <div ref={sidebarElement} className="bots-sidebar flex h-full min-h-0 flex-col overflow-hidden px-1.5 pb-1.5" data-conversation-dragging={Boolean(conversationDrop.drag)}>
