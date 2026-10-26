@@ -23,7 +23,7 @@ it.each(["project", PERSONAL_ID])("puts a dropped %s chat first durably, preserv
   expect(saved.linkedProjectIds).toEqual(projectId === PERSONAL_ID ? [] : ["project"]);
   expect(saved.mainThreadId).toBe(bot.mainThreadId);
   expect(host.threads.get(chat.id)).toEqual(chat);
-  expect((await listBotConversations(host.bb, saved, async id => host.store.owner(id))).roots[0]?.id).toBe(chat.id);
+  expect((await listBotConversations(host.bb, saved, host.store.owner, async id => host.store.owner(id))).roots[0]?.id).toBe(chat.id);
   expect(host.harness.inspection.sdk.callsTo("threads.update")).toEqual([]);
 });
 
@@ -32,11 +32,11 @@ it.each(["project", PERSONAL_ID])("appends an outside %s chat after ranked and u
   for (const id of ["ranked", "unranked-a", "unranked-b"]) { addThread(host, id, PERSONAL_ID); host.store.bind(id, bot.id); }
   host.store.mutate(bot.id, current => ({ ...current, threadOrder: ["ranked"] }));
   const chat = addThread(host, "chat", projectId);
-  const before = (await listBotConversations(host.bb, host.store.require(bot.id), async id => host.store.owner(id))).roots.map(row => row.id);
+  const before = (await listBotConversations(host.bb, host.store.require(bot.id), host.store.owner, async id => host.store.owner(id))).roots.map(row => row.id);
   await host.harness.behavior.callRpc("conversation_assign", { botId: bot.id, threadId: chat.id, placeFirst: false });
   await host.reload();
   const saved = host.store.require(bot.id);
-  expect((await listBotConversations(host.bb, saved, async id => host.store.owner(id))).roots.map(row => row.id)).toEqual([...before, chat.id]);
+  expect((await listBotConversations(host.bb, saved, host.store.owner, async id => host.store.owner(id))).roots.map(row => row.id)).toEqual([...before, chat.id]);
   expect(saved.linkedProjectIds).toEqual(projectId === PERSONAL_ID ? [] : ["project"]);
   expect(saved.mainThreadId).toBe(bot.mainThreadId);
   expect(host.threads.get(chat.id)).toEqual(chat);

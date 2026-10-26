@@ -119,7 +119,7 @@ export function registerBotsCli(bb: BbPluginApi, store: BotStore, resolveOwner: 
         const message = raw.trim();
         if (!message || message.length > MESSAGE_MAX_CHARS) throw new Error(`Message must contain 1-${MESSAGE_MAX_CHARS} characters`);
         const bot = recipient(store.list(), selector);
-        const threadId = options.threadId ?? (await listBotConversations(bb, bot, resolveOwner)).roots[0]?.id;
+        const threadId = options.threadId ?? (await listBotConversations(bb, bot, store.owner, resolveOwner)).roots[0]?.id;
         if (!threadId) throw new Error("This bot has no visible conversation. Open one in the sidebar first, or choose a bound conversation with --thread.");
         if (ctx.threadId === threadId) throw new Error("Cannot message the current conversation. Choose another bot or conversation.");
         ctx.signal?.throwIfAborted();

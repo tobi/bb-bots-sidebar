@@ -20,7 +20,7 @@ it("persists sibling ordering across reload without changing main pointers, hist
   const { host, bot } = await setup(); const before = [...host.threads.values()]; const bindings = host.store.bindings();
   await host.harness.behavior.callRpc("conversation_reorder", { botId: bot.id, threadId: "c", targetThreadId: "a", position: "before" });
   await host.reload();
-  const result = await listBotConversations(host.bb, host.store.require(bot.id), async id => host.store.owner(id));
+  const result = await listBotConversations(host.bb, host.store.require(bot.id), host.store.owner, async id => host.store.owner(id));
   expect(result.roots.map(row => row.id)).toEqual(["c", "a", "b"]);
   expect(host.store.require(bot.id).mainThreadId).toBe("a"); expect(host.store.bindings()).toEqual(bindings); expect([...host.threads.values()]).toEqual(before);
   expect(host.harness.inspection.sdk.callsTo("threads.update")).toEqual([]);
@@ -50,5 +50,5 @@ it("serializes simultaneous moves against current order and skips archived first
     host.harness.behavior.callRpc("conversation_reorder", { botId: bot.id, threadId: "b", targetThreadId: "c", position: "before" }),
   ]);
   host.threads.set("b", { ...host.threads.get("b")!, archivedAt: 1 });
-  expect((await listBotConversations(host.bb, host.store.require(bot.id), async id => host.store.owner(id))).roots.map(row => row.id)).toEqual(["c", "a"]);
+  expect((await listBotConversations(host.bb, host.store.require(bot.id), host.store.owner, async id => host.store.owner(id))).roots.map(row => row.id)).toEqual(["c", "a"]);
 });

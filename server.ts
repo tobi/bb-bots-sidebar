@@ -336,7 +336,7 @@ export default async function plugin(bb: BbPluginApi) {
       return { threadId: thread.id };
     }),
     conversation_reorder: ({ botId, threadId, targetThreadId, position }) => serial(botId, async () => {
-      const { rows } = await listBotConversations(bb, store.require(botId), resolveOwner);
+      const { rows } = await listBotConversations(bb, store.require(botId), store.owner, resolveOwner);
       const source = rows.find(row => row.id === threadId);
       const target = rows.find(row => row.id === targetThreadId);
       if (!source || !target) throw new Error("Both conversations must be visible and belong to this bot. Refresh and try again.");
@@ -380,7 +380,7 @@ export default async function plugin(bb: BbPluginApi) {
       // must win without leaving an unwanted membership behind.
       // Explicit false is an outside drop at the end; omitted preserves dialog ordering.
       const appendAfter = placeFirst === false
-        ? (await listBotConversations(bb, store.require(botId), resolveOwner)).rows.map(row => row.id) : undefined;
+        ? (await listBotConversations(bb, store.require(botId), store.owner, resolveOwner)).rows.map(row => row.id) : undefined;
       const assigned = store.adoptInherited(threadId, botId, needsLink ? thread.projectId : null, placeFirst, appendAfter);
       if (assigned.botId !== botId) throw new Error("Conversation already belongs to another bot");
       if (assigned.joined) await state.mirror(store.require(botId));
