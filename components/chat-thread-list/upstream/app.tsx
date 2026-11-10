@@ -15,7 +15,7 @@ export function ThreadList({
   isCompactViewport,
   onNavigate,
 }: PluginThreadListProps) {
-  useSidebarThreadReveal();
+  useSidebarThreadReveal(activeThreadId);
   return (
     <CompactViewportOverrideProvider isCompactViewport={isCompactViewport}>
       <TooltipProvider>

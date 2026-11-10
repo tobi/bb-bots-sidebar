@@ -5,6 +5,8 @@
   "adaptations": [
     "Chats-only thread data provider",
     "Preferences RPC forwarding to the installed thread-list plugin",
-    "Assignment menu and cross-area bot drag support"
+    "Assignment menu and cross-area bot drag support",
+    "Native drag targets restricted to the Chats area, including stale drop cancellation",
+    "Virtual workflow children with native disclosure and owner reveal for agent navigation"
   ]
 }

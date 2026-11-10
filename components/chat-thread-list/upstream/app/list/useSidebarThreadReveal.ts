@@ -12,6 +12,7 @@ import type { CollapsibleSidebarSectionId } from "../model/sidebar-section-id.js
 import { useBbContext } from "@get-bb/plugin-sdk/app";
 import type { OrganizationMode as SidebarOrganizationMode } from "../../shared/preferences.js";
 import { useSidebarData } from "../model/use-sidebar-data.js";
+import { useChatScope } from "../../../chat-scope";
 import {
   collapsedEnvironmentIdsAtom,
   collapsedProjectIdsAtom,
@@ -88,8 +89,9 @@ export function getThreadSidebarExpansion({
   return { projectId: sidebarProjectId };
 }
 
-export function useSidebarThreadReveal(): void {
+export function useSidebarThreadReveal(activeThreadId?: string | null): void {
   const { threadId: routedThreadId } = useBbContext();
+  const chatScope = useChatScope();
   const { status, projects, personalProject } = useSidebarData();
   const preferencesReady = usePreferencesReady();
   const threads = useMemo<SidebarThread[]>(
@@ -97,7 +99,8 @@ export function useSidebarThreadReveal(): void {
     [projects],
   );
   useSidebarThreadRevealCore({
-    selectedThreadId: routedThreadId ?? undefined,
+    selectedThreadId: (activeThreadId === undefined ? routedThreadId : activeThreadId) ?? undefined,
+    navigationThreadId: (chatScope?.activeThreadId ?? activeThreadId ?? routedThreadId) ?? undefined,
     threads,
     threadsReady: status === "ready",
     preferencesReady,
@@ -216,6 +219,7 @@ export function resolveThreadRevealExpansion({
 
 interface SidebarThreadRevealInputs {
   selectedThreadId: string | undefined;
+  navigationThreadId: string | undefined;
   threads: readonly SidebarThread[];
   threadsReady: boolean;
   preferencesReady: boolean;
@@ -224,6 +228,7 @@ interface SidebarThreadRevealInputs {
 
 function useSidebarThreadRevealCore({
   selectedThreadId,
+  navigationThreadId,
   threads,
   threadsReady,
   preferencesReady,
@@ -249,8 +254,15 @@ function useSidebarThreadRevealCore({
     [threads],
   );
   const revealState = useRef(INITIAL_SIDEBAR_THREAD_REVEAL_STATE);
+  const previousNavigationId = useRef<string | undefined>(undefined);
 
   useEffect(() => {
+    // Different workflow agents can share one native owner row. Each navigation
+    // must reveal its path even when the selected owner id does not change.
+    if (previousNavigationId.current !== navigationThreadId) {
+      previousNavigationId.current = navigationThreadId;
+      revealState.current = { ...revealState.current, pendingNavigation: selectedThreadId };
+    }
     const step = stepSidebarThreadReveal(revealState.current, {
       selectedThreadId,
       threadById,
@@ -306,6 +318,7 @@ function useSidebarThreadRevealCore({
     }
   }, [
     selectedThreadId,
+    navigationThreadId,
     threadsReady,
     preferencesReady,
     personalProjectId,

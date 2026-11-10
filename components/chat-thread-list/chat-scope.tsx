@@ -7,6 +7,8 @@ export interface ChatScope {
   bindings: readonly { threadId: string; botId: string }[];
   detached: ReadonlySet<string>;
   ready: boolean;
+  /** Actual viewed thread; the native tree uses its owner for workflow agents. */
+  activeThreadId?: string | null;
   draggingThreadId?: string | null;
   onAssign(thread: PluginSidebarThread): void;
   onPointerDown(thread: PluginSidebarThread, event: ReactPointerEvent<HTMLElement>): void;

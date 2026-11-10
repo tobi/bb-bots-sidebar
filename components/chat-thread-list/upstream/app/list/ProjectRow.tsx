@@ -41,6 +41,7 @@ import {
 } from "@dnd-kit/sortable";
 import { createPortal } from "react-dom";
 import type { SidebarThread } from "../model/sidebar-thread.js";
+import { ChatWorkflowChildren, useChatWorkflowChildren } from "../../../workflow-children";
 import { toast } from "sonner";
 import {
   experimental_ThreadStatusGlyph as ThreadStatusGlyph,
@@ -1455,7 +1456,8 @@ export const ThreadTreeNodeRow = memo(function ThreadTreeNodeRow({
   sortableStyle,
 }: ThreadTreeNodeRowProps) {
   const isCollapsed = collapsedThreadIds.has(node.thread.id);
-  const hasChildren = node.children.length > 0;
+  const workflows = useChatWorkflowChildren(node.thread, isCollapsed, onToggleThreadCollapsed);
+  const hasChildren = node.children.length > 0 || workflows.length > 0;
   const isParent = hasChildren;
   const nestDropEnabled = Boolean(sectionDnd);
   const { setNodeRef: setNestDropNodeRef } = useDroppable({
@@ -1509,7 +1511,7 @@ export const ThreadTreeNodeRow = memo(function ThreadTreeNodeRow({
     () =>
       getThreadRowOptions({
         hiddenThreads: node.stats.hiddenThreads,
-        childCount: node.stats.childCount,
+        childCount: node.stats.childCount + workflows.length,
         consumeClickSuppression,
         dragBindings,
         depthOffset,
@@ -1533,6 +1535,7 @@ export const ThreadTreeNodeRow = memo(function ThreadTreeNodeRow({
       hasChildren,
       nestDrop,
       node,
+      workflows.length,
       onToggleThreadCollapsed,
     ],
   );
@@ -1620,6 +1623,7 @@ export const ThreadTreeNodeRow = memo(function ThreadTreeNodeRow({
               thread={nestPreviewThread}
             />
           ) : null}
+          {showChildren ? <ChatWorkflowChildren runs={workflows} depth={parentRowDepth + 1} onNavigate={onProjectSelect} /> : null}
         </div>
       ) : null}
     </SidebarStickyGroup>
@@ -2286,22 +2290,6 @@ interface ProjectRowPropsComparisonArgs {
   next: ProjectRowProps;
 }
 
-function getThreadIdsWithChildren(
-  threads: readonly SidebarThread[],
-): Set<string> {
-  const threadIds = new Set(threads.map((thread) => thread.id));
-  const threadIdsWithChildren = new Set<string>();
-
-  for (const thread of threads) {
-    if (thread.parentThreadId === null) continue;
-    if (!threadIds.has(thread.parentThreadId)) continue;
-
-    threadIdsWithChildren.add(thread.parentThreadId);
-  }
-
-  return threadIdsWithChildren;
-}
-
 function hasCollapsedThreadStateChanged({
   prev,
   next,
@@ -2313,10 +2301,8 @@ function hasCollapsedThreadStateChanged({
     return false;
   }
 
-  const threadIdsWithChildren = getThreadIdsWithChildren(
-    prev.threadListState.threads,
-  );
-  for (const threadId of threadIdsWithChildren) {
+  // A thread may have virtual workflow children even without a real child.
+  for (const { id: threadId } of prev.threadListState.threads) {
     if (
       prev.collapsedThreadIds.has(threadId) !==
       next.collapsedThreadIds.has(threadId)

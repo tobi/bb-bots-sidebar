@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import type { SidebarThread } from "../model/sidebar-thread.js";
+import { useChatWorkflowParents } from "../../../workflow-children";
 import type { ThreadComparator } from "../model/project-thread-groups.js";
 import {
   collapseParentThreads,
@@ -51,6 +52,7 @@ export function useReadStatusGrouping({
   comparator: ThreadComparator;
 }) {
   const groupByReadStatus = useAtomValue(sidebarGroupByReadStatusAtom);
+  const workflowParents = useChatWorkflowParents(threads);
   const heldReadStatus = useHeldReadStatus(threads, selectedThreadId);
   const [collapsedThreadIdList, setCollapsedThreadIdList] = useAtom(
     collapsedThreadIdsAtom,
@@ -68,13 +70,14 @@ export function useReadStatusGrouping({
         : comparator,
     [comparator, groupByReadStatus, heldReadStatus],
   );
-  const collapsedThreadIds = useMemo(
-    () =>
-      groupByReadStatus
-        ? collapseParentThreads(threads, expandedWhileGrouped)
-        : new Set(collapsedThreadIdList),
-    [collapsedThreadIdList, expandedWhileGrouped, groupByReadStatus, threads],
-  );
+  const collapsedThreadIds = useMemo(() => {
+    if (!groupByReadStatus) return new Set(collapsedThreadIdList);
+    const collapsed = collapseParentThreads(threads, expandedWhileGrouped);
+    for (const threadId of workflowParents) {
+      if (!expandedWhileGrouped.includes(threadId)) collapsed.add(threadId);
+    }
+    return collapsed;
+  }, [collapsedThreadIdList, expandedWhileGrouped, groupByReadStatus, threads, workflowParents]);
   const toggleThreadCollapsed = useCallback(
     (threadId: string) => {
       if (groupByReadStatus) {

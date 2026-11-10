@@ -45,7 +45,7 @@ for p,d in seen.items():
  d.parent.mkdir(parents=True,exist_ok=True)
  d.write_text(pattern.sub(rewrite,p.read_text()))
 (output/'LICENSE').write_text((root/'LICENSE').read_text())
-(output/'PROVENANCE.json').write_text(json.dumps({'repository':'https://github.com/get-bb/bb','tag':'desktop-v0.49.0','commit':'7b26cae79ec978fafd0a5db0e8517e94f12eb8f4','adaptations':['Chats-only thread data provider','Preferences RPC forwarding to the installed thread-list plugin','Assignment menu and cross-area bot drag support']},indent=2)+'\n')
+(output/'PROVENANCE.json').write_text(json.dumps({'repository':'https://github.com/get-bb/bb','tag':'desktop-v0.49.0','commit':'7b26cae79ec978fafd0a5db0e8517e94f12eb8f4','adaptations':['Chats-only thread data provider','Preferences RPC forwarding to the installed thread-list plugin','Assignment menu and cross-area bot drag support','Native drag targets restricted to the Chats area, including stale drop cancellation','Virtual workflow children with native disclosure and owner reveal for agent navigation']},indent=2)+'\n')
 external=set()
 for d in seen.values():
  for m in pattern.finditer(d.read_text()):

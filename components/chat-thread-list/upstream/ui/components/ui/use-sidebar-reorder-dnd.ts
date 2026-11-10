@@ -1,15 +1,18 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type {
+  CollisionDetection,
   DragEndEvent,
   DragStartEvent,
   Sensor,
   TouchSensorOptions,
 } from "@dnd-kit/core";
 import {
+  reorderCollisionDetection,
   useReorderDnd,
   type UseReorderDndArgs,
   type UseReorderDndResult,
 } from "./use-reorder-dnd.js";
+import { useChatScope } from "../../../../chat-scope";
 
 function setSidebarDraggingCursor(active: boolean): void {
   if (active) {
@@ -34,8 +37,19 @@ export function useSidebarReorderDnd({
   measuring,
   touchSensor,
 }: UseSidebarReorderDndArgs): UseReorderDndResult {
+  const isChatList = useChatScope() !== null;
+  const pointerWithinChats = useRef(true);
+  const detectCollisions = useCallback<CollisionDetection>((args) => {
+    const point = args.pointerCoordinates;
+    // Bots and Chats share the host sidebar. Only Chats owns native drops.
+    pointerWithinChats.current = !isChatList || point === null || typeof document.elementsFromPoint !== "function" ||
+      document.elementsFromPoint(point.x, point.y).some(element => element.closest(".chat-thread-list") !== null);
+    if (!pointerWithinChats.current) return [];
+    return (collisionDetection ?? reorderCollisionDetection)(args);
+  }, [isChatList, collisionDetection]);
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
+      pointerWithinChats.current = true;
       setSidebarDraggingCursor(true);
       onDragStart?.(event);
     },
@@ -48,9 +62,11 @@ export function useSidebarReorderDnd({
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       setSidebarDraggingCursor(false);
-      onDragEnd(event);
+      // A retained native target must not commit after assignment takes over.
+      if (pointerWithinChats.current) onDragEnd(event);
+      else onDragCancel?.();
     },
-    [onDragEnd],
+    [onDragEnd, onDragCancel],
   );
 
   useEffect(() => {
@@ -65,7 +81,7 @@ export function useSidebarReorderDnd({
     onDragMove,
     onDragOver,
     onDragCancel: handleDragCancel,
-    collisionDetection,
+    collisionDetection: detectCollisions,
     touchSensor,
     axis,
     measuring,
