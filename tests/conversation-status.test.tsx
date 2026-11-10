@@ -7,13 +7,13 @@ import { thread } from "./fixtures";
 afterEach(cleanup);
 
 it.each(["runtime", "workflow", "background-agent", "background-command", "plan-mode", "goal", "working-draft"] as const)("shows working for %s", (indicator) => {
-  const view = render(<ConversationStatusIcon thread={thread("test", 1, { indicator })} />);
+  const view = render(<ConversationStatusIcon thread={Object.assign(thread("test", 1), { indicator })} />);
   expect(view.getByRole("img", { name: "Working" }).classList.contains("conversation-status-working")).toBe(true);
 });
 
 it.each(["workflows", "backgroundAgents", "backgroundCommands", "planMode", "goals"] as const)("keeps %s work visible even with an unread foreground result", (field) => {
   const row = thread("test", 1, { indicator: "unread-success", isUnread: true });
-  row.activity[field] = 1;
+  Object.assign(row.activity, { [field]: 1 });
   const view = render(<ConversationStatusIcon thread={row} />);
   expect(view.getByRole("img", { name: "Working — unread" })).toBeTruthy();
 });

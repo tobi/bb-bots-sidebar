@@ -36,6 +36,7 @@ async function mount({
     activeThreadId, activeProjectId: "project", isCompactViewport: false, onNavigate, searchQuery: "",
   }, {
     sidebarThreads: { projects: [
+      { id: personalProjectId, name: "Personal", isPersonal: true, href: "/projects/personal", settingsHref: "/projects/personal/settings" },
       { id: "project", name: "Shared project", isPersonal: false, href: "/projects/project", settingsHref: "/projects/project/settings" },
       { id: "second", name: "Second project", isPersonal: false, href: "/projects/project", settingsHref: "/projects/project/settings" },
       { id: "unrelated", name: "Brand new unrelated project", isPersonal: false, href: "/projects/project", settingsHref: "/projects/project/settings" },
@@ -118,9 +119,9 @@ describe("independent bot identities", () => {
     expect(within(secondGroup).getByText("Conversation explicit-override")).toBeTruthy();
     expect(within(secondGroup).queryByText("Conversation first-root")).toBeNull();
     for (const id of ["unassigned-project", "unassigned-unrelated"]) {
-      expect(slot.container.querySelector(`[data-sidebar-thread-id="${id}"]`)?.closest(".recent-row")).not.toBeNull();
+      expect(slot.container.querySelector(`[data-sidebar-thread-id="${id}"]`)?.closest(".chat-thread-list")).not.toBeNull();
     }
-    expect(slot.container.querySelector('.recent-row [data-sidebar-thread-id="first-root"]')).toBeNull();
+    expect(slot.container.querySelector('.chat-thread-list [data-sidebar-thread-id="first-root"]')).toBeNull();
     expect(slot.inspection.rpcCalls.some((call) => call.method === "main_set")).toBe(false);
   });
 
@@ -136,7 +137,7 @@ describe("independent bot identities", () => {
     expect(composer.props?.defaultEnvironment).toEqual(personalEnvironment);
     expect(slot.inspection.navigateCalls).toEqual([]);
     // The personal project comes from bots_list, not the sidebar project cache.
-    expect(slot.inspection.rpcCalls.map((call) => call.method).filter((method) => method !== "workflow_runs")).toEqual(["bots_list", "bot_prepare", "bots_list"]);
+    expect(slot.inspection.rpcCalls.map((call) => call.method).filter((method) => method !== "workflow_runs" && method !== "listPreferences")).toEqual(["bots_list", "bot_prepare", "bots_list"]);
     await act(() => composer.props!.onSubmit(personalRequest));
     expect(slot.inspection.rpcCalls).toContainEqual({ method: "conversation_create", input: { botId: "solo", makeMain: false, request: personalRequest } });
     expect(slot.inspection.rpcCalls.some((call) => call.method === "main_set")).toBe(false);
@@ -294,7 +295,7 @@ describe("independent bot identities", () => {
     expect(slot.inspection.rpcCalls).toContainEqual({ method: "bot_prepare", input: { botId: "created" } });
     expect(composer.props?.defaultProjectId).toBe(personalProjectId);
     expect(composer.props?.defaultEnvironment).toEqual({ type: "host", hostId: "remote", workspace: { type: "personal" } });
-    expect(slot.inspection.rpcCalls.every((call) => ["bots_list", "bot_create", "bot_prepare", "workflow_runs"].includes(call.method))).toBe(true);
+    expect(slot.inspection.rpcCalls.every((call) => ["listPreferences", "bots_list", "bot_create", "bot_prepare", "workflow_runs"].includes(call.method))).toBe(true);
     expect(slot.inspection.navigateCalls).toEqual([]);
   });
 
@@ -359,10 +360,10 @@ describe("independent bot identities", () => {
     await waitFor(() => expect(slot.queryByRole("dialog")).toBeNull());
     expect(slot.inspection.rpcCalls).toContainEqual({ method: "conversation_assign", input: { botId: bot.id, threadId: "unassigned" } });
     await waitFor(() => expect(slot.container.querySelector('.thread-row [data-sidebar-thread-id="unassigned"]')).not.toBeNull());
-    expect(slot.container.querySelector('.recent-row [data-sidebar-thread-id="unassigned"]')).toBeNull();
+    expect(slot.container.querySelector('.chat-thread-list [data-sidebar-thread-id="unassigned"]')).toBeNull();
     fireEvent.click(slot.getByRole("button", { name: "Expand children of Conversation unassigned" }));
     expect(slot.container.querySelector('.thread-row [data-sidebar-thread-id="child"]')).not.toBeNull();
-    expect(slot.container.querySelector('.recent-row [data-sidebar-thread-id="child"]')).toBeNull();
+    expect(slot.container.querySelector('.chat-thread-list [data-sidebar-thread-id="child"]')).toBeNull();
     expect(slot.inspection.rpcCalls.some((call) => call.method === "main_set")).toBe(false);
   });
 
@@ -382,7 +383,7 @@ describe("independent bot identities", () => {
       thread("legacy-unassigned", 1002, { projectId: "legacy-project" }),
     ] });
     for (const id of ["personal-unassigned", "legacy-unassigned"]) {
-      expect(slot.container.querySelector(`[data-sidebar-thread-id="${id}"]`)?.closest(".recent-row")).not.toBeNull();
+      expect(slot.container.querySelector(`[data-sidebar-thread-id="${id}"]`)?.closest(".chat-thread-list")).not.toBeNull();
     }
     expect(slot.getByRole("button", { name: "1 hidden" })).toBeTruthy();
     expect(slot.inspection.rpcCalls.some((call) => call.method === "visibility_set" || call.method === "conversation_assign")).toBe(false);
@@ -391,7 +392,7 @@ describe("independent bot identities", () => {
   it("offers every bot for explicit personal-chat assignment without claiming it beforehand", async () => {
     const unlinked = { ...bot, id: "unlinked", name: "Unlinked bot", linkedProjectIds: [], mainThreadId: null };
     const { slot } = await mount({ bots: [bot, unlinked], rows: [thread("personal-chat", 99, { projectId: personalProjectId })], bindings: [], activeThreadId: "personal-chat" });
-    expect(slot.container.querySelector('.recent-row [data-sidebar-thread-id="personal-chat"]')).not.toBeNull();
+    await waitFor(() => expect(slot.container.querySelector('.chat-thread-list [data-sidebar-thread-id="personal-chat"]')).not.toBeNull());
     fireEvent.contextMenu(slot.getByText("Conversation personal-chat"));
     fireEvent.click(await slot.findByRole("menuitem", { name: "Assign to bot…" }));
     const dialog = await slot.findByRole("dialog", { name: "Assign conversation to bot" });
@@ -516,7 +517,7 @@ describe("independent bot identities", () => {
 
   it("surfaces backend warnings without turning projects into bots", async () => {
     const { slot } = await mount({ warnings: ["A legacy bot needs attention."] });
-    expect(slot.getByRole("status").textContent).toBe("A legacy bot needs attention.");
+    expect(slot.getByText("A legacy bot needs attention.").textContent).toBe("A legacy bot needs attention.");
     expect(slot.container.querySelectorAll(".project-group")).toHaveLength(1);
   });
 });

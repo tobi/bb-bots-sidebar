@@ -1,13 +1,19 @@
 import { renderSlot as renderSdkSlot } from "@get-bb/plugin-sdk/testing/app";
 import type { RenderSlotOptions } from "@get-bb/plugin-sdk/testing/app";
 import { makeThreadResponse } from "@get-bb/plugin-sdk/testing";
+import { defaultPreferences } from "../components/chat-thread-list/upstream/shared/preferences";
+import { resetPreferencesSyncForTest } from "../components/chat-thread-list/upstream/app/preferences/preferences-sync";
+import { resetSidebarDataCacheForTest } from "../components/chat-thread-list/upstream/app/model/use-sidebar-data";
 
 // The SDK deliberately doesn't emulate BB's registered thread actions. Supply
 // explicit test doubles; lifecycle tests control the resulting sidebar snapshot.
 export function renderSlot<Props extends object>(registration: { component: React.ComponentType<Props> }, props: Props, options: RenderSlotOptions = {}) {
+  resetPreferencesSyncForTest();
+  resetSidebarDataCacheForTest();
   const nativeActionCalls: Array<{ key: string; threadId: string }> = [];
   const slot = renderSdkSlot(registration, props, {
     ...options,
+    rpc: { listPreferences: () => ({ preferences: defaultPreferences() }), ...options.rpc },
     sdk: { ...options.sdk, threads: {
       update: async ({ threadId, title }) => makeThreadResponse({ id: threadId, title }),
       ...options.sdk?.threads,

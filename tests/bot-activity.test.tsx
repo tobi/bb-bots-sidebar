@@ -47,7 +47,7 @@ it("bounds activity to three slots and exposes the exact overflow count", () => 
 });
 
 it("counts each background-working conversation once, ignoring archived and waiting threads", () => {
-  const background = thread("background", 10, { indicator: "unread-success", isUnread: true, activity: { workflows: 2, backgroundAgents: 5, backgroundCommands: 3, planMode: 0, goals: 0 } });
+  const background = thread("background", 10, { indicator: "unread-success", isUnread: true, activity: { workflows: 2, backgroundAgents: 5, backgroundCommands: 3, planMode: 0 } });
   const view = render(<BotActivityBadge mainThreadId="main" threads={[
     running("main"), background, { ...running("archived"), isArchived: true },
     { ...running("waiting"), hasPendingInteraction: true }, thread("waiting-indicator", 1, { indicator: "waiting-for-input" }),

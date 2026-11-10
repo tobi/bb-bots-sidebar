@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { experimental_DetailRow as DetailRow, experimental_InfoSection as InfoSection, useRealtime, useRealtimeConnectionState, useRpc } from "@get-bb/plugin-sdk/app";
-import type { ExperimentalThreadInfoProps, PluginThreadHeaderActionProps } from "@get-bb/plugin-sdk/app";
+import type { ExperimentalThreadInfoProps } from "@get-bb/plugin-sdk/app";
 import { toast } from "sonner";
 import type { rpcContract, ThreadBot, ThreadBotPrompt } from "../contract";
 import { BotIcon } from "./bot-icon";
@@ -95,7 +95,7 @@ function ThreadBotSelect({ threadId, variant, compact = false }: { threadId: str
 }
 
 /** Thread header: assign the thread to a bot or to none, whichever sidebar is shown. */
-export function ThreadBotHeaderAction({ threadId, isCompactViewport }: PluginThreadHeaderActionProps) {
+export function ThreadBotHeaderAction({ threadId, isCompactViewport }: { threadId: string; isCompactViewport: boolean }) {
   return <ThreadBotSelect threadId={threadId} variant="header" compact={isCompactViewport} />;
 }
 

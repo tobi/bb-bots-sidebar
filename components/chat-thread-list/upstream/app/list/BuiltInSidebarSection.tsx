@@ -1,0 +1,141 @@
+import { ThreadCreationPlacementScope } from "./ThreadCreationPlacement.js";
+import { memo, type ReactNode } from "react";
+import type { ConsumeDragClickSuppression } from "../../ui/components/ui/use-drag-click-suppression.js";
+import {
+  TopLevelSidebarSection,
+  type TopLevelSidebarSectionProps,
+} from "./TopLevelSidebarSection.js";
+import { useSidebarSortable } from "../../ui/components/ui/sortable-motion.js";
+import { CHRONOLOGICAL_CONTAINER_ID } from "../model/project-thread-groups.js";
+import type {
+  CollapsibleSidebarSectionId,
+  SidebarSectionId,
+} from "../model/sidebar-section-id.js";
+import { PINNED_THREAD_PARENT_KEY } from "../dnd/useSectionThreadDnd.js";
+import type { SidebarThread } from "../model/sidebar-thread.js";
+
+interface SortableSidebarSectionProps extends TopLevelSidebarSectionProps {
+  disabled: boolean;
+  id: SidebarSectionId;
+}
+
+export interface BuiltInSidebarSectionOptions {
+  actions?: ReactNode;
+  actionsOpen?: boolean;
+  collapsedThreads?: readonly SidebarThread[];
+  content: ReactNode;
+  label: string;
+}
+
+interface BuiltInSidebarSectionProps extends BuiltInSidebarSectionOptions {
+  consumeClickSuppression?: ConsumeDragClickSuppression;
+  disabled: boolean;
+  id: CollapsibleSidebarSectionId;
+  isCollapsed: boolean;
+  onToggleCollapsed: (id: CollapsibleSidebarSectionId) => void;
+}
+
+const BUILT_IN_SECTION_DROP_PARENT_KEY: Record<
+  CollapsibleSidebarSectionId,
+  string
+> = {
+  pinned: PINNED_THREAD_PARENT_KEY,
+  threads: CHRONOLOGICAL_CONTAINER_ID,
+};
+
+export type BuiltInSidebarSectionOptionsById = Record<
+  CollapsibleSidebarSectionId,
+  BuiltInSidebarSectionOptions
+>;
+
+interface RenderBuiltInSidebarSectionArgs {
+  collapsedSectionIds: ReadonlySet<CollapsibleSidebarSectionId>;
+  consumeClickSuppression?: ConsumeDragClickSuppression;
+  disabled: boolean;
+  onToggleCollapsed: (id: CollapsibleSidebarSectionId) => void;
+  sectionId: SidebarSectionId;
+  sections: BuiltInSidebarSectionOptionsById;
+  showPinnedSection: boolean;
+}
+
+export const SortableSidebarSection = memo(function SortableSidebarSection({
+  id,
+  disabled,
+  ...props
+}: SortableSidebarSectionProps) {
+  const { dragBindings, setNodeRef, style } = useSidebarSortable({
+    id,
+    disabled,
+  });
+
+  return (
+    <TopLevelSidebarSection
+      {...props}
+      dragBindings={props.labelEditor ? undefined : dragBindings}
+      sectionRef={setNodeRef}
+      sectionStyle={style}
+    />
+  );
+});
+
+function BuiltInSidebarSection({
+  actions,
+  actionsOpen,
+  collapsedThreads,
+  consumeClickSuppression,
+  content,
+  disabled,
+  id,
+  isCollapsed,
+  label,
+  onToggleCollapsed,
+}: BuiltInSidebarSectionProps) {
+  return (
+    <SortableSidebarSection
+      id={id}
+      label={label}
+      stickyHeader={id !== "pinned"}
+      disabled={disabled}
+      actions={actions}
+      actionsOpen={actionsOpen}
+      collapsedThreads={collapsedThreads}
+      actionsMobileAlways
+      collapseControl={{
+        isCollapsed,
+        onToggleCollapsed: () => onToggleCollapsed(id),
+      }}
+      consumeClickSuppression={consumeClickSuppression}
+      dropParentKey={BUILT_IN_SECTION_DROP_PARENT_KEY[id]}
+    >
+      <ThreadCreationPlacementScope group={id}>
+        {content}
+      </ThreadCreationPlacementScope>
+    </SortableSidebarSection>
+  );
+}
+
+export function renderBuiltInSidebarSection({
+  collapsedSectionIds,
+  consumeClickSuppression,
+  disabled,
+  onToggleCollapsed,
+  sectionId,
+  sections,
+  showPinnedSection,
+}: RenderBuiltInSidebarSectionArgs): ReactNode | undefined {
+  if (sectionId !== "pinned" && sectionId !== "threads") {
+    return undefined;
+  }
+  if (sectionId === "pinned" && !showPinnedSection) return undefined;
+  return (
+    <BuiltInSidebarSection
+      {...sections[sectionId]}
+      key={sectionId}
+      id={sectionId}
+      disabled={disabled}
+      isCollapsed={collapsedSectionIds.has(sectionId)}
+      onToggleCollapsed={onToggleCollapsed}
+      consumeClickSuppression={consumeClickSuppression}
+    />
+  );
+}

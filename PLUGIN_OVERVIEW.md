@@ -1,5 +1,10 @@
 Give recurring work a named specialist without tying its identity to one repository.
 
+Chats uses BB’s standard Thread List interface while Bots stays separate. Organize
+Chats by project, machine, or recency. Use native sorting, pins, sections, nested
+threads, actions, shortcuts, and drag-and-drop. Layout preferences are shared with
+the installed Thread List plugin. This version targets BB 0.49.0.
+
 ## What you get
 
 - Named bots with avatars, their own instructions, and up to 3,000 characters of durable memory.

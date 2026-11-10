@@ -75,7 +75,7 @@ it("double-clicking the bot toggles the list once, without duplicate navigation"
   ]);
   fireEvent.doubleClick(toggle());
   expect(toggle().getAttribute("aria-expanded")).toBe("false");
-  expect(slot.inspection.rpcCalls.every(call => ["bots_list", "workflow_runs"].includes(call.method))).toBe(true);
+  expect(slot.inspection.rpcCalls.every(call => ["listPreferences", "bots_list", "workflow_runs"].includes(call.method))).toBe(true);
 });
 
 it.each(["before", "after", "nest", "escape", "outside", "touch", "blur", "unmount", "failure"])("pointer drag supports %s without stealing split gestures or clicks", async mode => {
@@ -98,7 +98,7 @@ it.each(["before", "after", "nest", "escape", "outside", "touch", "blur", "unmou
     await waitFor(() => expect(slot.inspection.rpcCalls).toContainEqual({ method: "conversation_reorder", input: { botId: bot.id, threadId: "last", targetThreadId: "first", position: mode === "after" ? "after" : "before" } }));
   } else if (mode === "nest") {
     await waitFor(() => expect(slot.inspection.rpcCalls).toContainEqual({ method: "conversation_nest", input: { threadId: "last", parentThreadId: "first" } }));
-  } else expect(slot.inspection.rpcCalls.every(call => ["bots_list", "workflow_runs"].includes(call.method))).toBe(true);
+  } else expect(slot.inspection.rpcCalls.every(call => ["listPreferences", "bots_list", "workflow_runs"].includes(call.method))).toBe(true);
   if (mode === "failure") { expect(await slot.findByRole("alert")).toHaveProperty("textContent", "Reorder failed"); expect(slot.container.querySelector('[data-sidebar-thread-id]')?.getAttribute("data-sidebar-thread-id")).toBe("first"); }
   expect(split.onPointerDown).toHaveBeenCalledOnce(); expect(slot.inspection.navigateCalls).toEqual([]);
   expect(document.querySelector(".conversation-drag-ghost")).toBeNull();
@@ -166,5 +166,5 @@ it("archives the first row and opens the next without replacing a main", async (
   fireEvent.click(slot.getByRole("button", { name: "Archive Conversation first" })); fireEvent.click(open());
   expect(slot.nativeActionCalls).toEqual([{ key: "bb--core/archive", threadId: "first" }]);
   expect(slot.inspection.navigateCalls).toEqual([{ method: "toThread", threadId: "first", options: undefined }]);
-  expect(slot.inspection.rpcCalls.every(call => ["bots_list", "workflow_runs"].includes(call.method))).toBe(true);
+  expect(slot.inspection.rpcCalls.every(call => ["listPreferences", "bots_list", "workflow_runs"].includes(call.method))).toBe(true);
 });

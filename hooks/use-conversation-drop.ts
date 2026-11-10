@@ -37,7 +37,7 @@ export function useConversationDrop(onDrop: (thread: PluginSidebarThread, botId:
   function moveGhost() { if (ghostRef.current) ghostRef.current.style.transform = `translate3d(${position.current.x + 12}px, ${position.current.y + 12}px, 0)`; }
   useEffect(moveGhost, [drag]);
 
-  function begin(thread: PluginSidebarThread, event: ReactPointerEvent<HTMLElement>) {
+  function begin(thread: PluginSidebarThread, event: ReactPointerEvent<HTMLElement>, engageOnTarget = false) {
     if (event.button !== 0 || event.pointerType === "touch") return;
     const sidebar = event.currentTarget.closest(".bots-sidebar");
     if (!sidebar) return;
@@ -79,6 +79,7 @@ export function useConversationDrop(onDrop: (thread: PluginSidebarThread, botId:
       if (ended || event.pointerId !== start.pointerId) return;
       if (!(event.buttons & 1)) { cancelled(); return; }
       if (!engaged && Math.hypot(event.clientX - start.x, event.clientY - start.y) < 6) return;
+      if (!engaged && engageOnTarget && !targetAt(event.clientX, event.clientY, event.shiftKey)) return;
       const first = !engaged; engaged = true;
       event.preventDefault(); position.current = { x: event.clientX, y: event.clientY }; moveGhost();
       const next = targetAt(event.clientX, event.clientY, event.shiftKey);

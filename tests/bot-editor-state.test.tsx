@@ -52,7 +52,7 @@ it("puts the three active logical files in Edit bot with one Save and no separat
   expect(dialog.querySelectorAll("textarea")).toHaveLength(1);
   expect(within(dialog).queryByRole("button", { name: "Save file" })).toBeNull();
   expect(within(dialog).getByRole("button", { name: "Save bot" }).closest('[role="tabpanel"]')).toBeNull();
-  expect(slot.inspection.rpcCalls.every(call => ["bots_list", "bot_prepare", "workflow_runs"].includes(call.method))).toBe(true);
+  expect(slot.inspection.rpcCalls.every(call => ["listPreferences", "bots_list", "bot_prepare", "workflow_runs"].includes(call.method))).toBe(true);
   expect(onNavigate).not.toHaveBeenCalled(); expect(slot.inspection.navigateCalls).toEqual([]);
   expect(dialog.textContent).not.toMatch(/\/home\/|Home folder|Unrelated checkout/);
 });

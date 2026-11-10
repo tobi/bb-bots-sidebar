@@ -27,3 +27,13 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## BB Thread List
+
+`components/chat-thread-list/upstream/` includes Thread List and shared UI
+source from [BB](https://github.com/get-bb/bb), release `desktop-v0.49.0`,
+commit `7b26cae79ec978fafd0a5db0e8517e94f12eb8f4`.
+
+Copyright (c) 2026 Michael Yong. Licensed under MIT. The full license is
+in `components/chat-thread-list/upstream/LICENSE`. Local adaptations are listed
+in that directory’s `PROVENANCE.json`.

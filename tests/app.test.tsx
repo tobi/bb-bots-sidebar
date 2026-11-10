@@ -67,12 +67,15 @@ describe("Bots sidebar", () => {
     { indicator: "runtime" as const, label: "Working" },
     { indicator: "none" as const, label: "Done" },
   ])("shows $label icons on both bot conversations and Chats", async ({ indicator, label }) => {
-    const { slot } = await mount(true, { indicator });
+    const { slot } = await mount(true, { indicator, runtimeStatus: indicator === "runtime" ? "active" : "idle" });
     for (const id of ["0", "chat"]) {
       const row = slot.container.querySelector<HTMLElement>(`[data-sidebar-thread-id="${id}"]`)!;
-      expect(within(row).getByRole("img", { name: label })).toBeTruthy();
-      expect(row.querySelectorAll(".conversation-status")).toHaveLength(1);
-      expect(row.querySelector(".thread-indicator, .thread-branch")).toBeNull();
+      if (id === "chat") {
+        expect(row.closest("[data-sidebar-rename-row]")?.querySelector("[data-thread-status-glyph]")?.getAttribute("data-thread-status-glyph") ?? "none").toBe(indicator);
+      } else {
+        expect(within(row).getByRole("img", { name: label })).toBeTruthy();
+        expect(row.querySelectorAll(".conversation-status")).toHaveLength(1);
+      }
     }
   });
   it("archives a conversation through the host, not a private RPC", async () => {
@@ -85,11 +88,11 @@ describe("Bots sidebar", () => {
     const { slot } = await mount(true);
     fireEvent.contextMenu(slot.getByText("Conversation chat"));
     const menu = await slot.findByRole("menu");
-    expect(Array.from(menu.querySelectorAll('[role="menuitem"]'), (item) => item.textContent)).toEqual(["Rename…", "Open in split", "Mark as unread", "Archive conversation", "Assign to bot…"]);
+    expect(Array.from(menu.querySelectorAll('[role="menuitem"]'), (item) => item.textContent)).toEqual(["Rename…", "Open in split", "Mark as unread", "Archive conversation", "Customize actions", "Assign to bot…"]);
     fireEvent.click(slot.getByRole("menuitem", { name: "Archive conversation" }));
     expect(slot.nativeActionCalls).toContainEqual({ key: "bb--core/archive", threadId: "chat" });
   });
-  it.each(["0", "chat"])("renames %s only on explicit Save", async (id) => {
+  it.each(["0"])("renames bot conversation %s only on explicit Save", async (id) => {
     const { slot } = await mount(true);
     fireEvent.contextMenu(slot.getByText(`Conversation ${id}`));
     fireEvent.click(await slot.findByRole("menuitem", { name: "Rename…" }));
