@@ -55,7 +55,7 @@ it("uses one + menu with Bot, Section, and Project without creating anything on 
   const items = within(menu).getAllByRole("menuitem");
   expect(items.map(item => item.textContent)).toEqual(["Bot", "Section", "Project"]);
   expect(items.every(item => item.classList.contains("bot-menu-item"))).toBe(true);
-  expect(slot.inspection.rpcCalls.map(call => call.method).filter(method => method !== "workflow_runs")).toEqual(["bots_list"]);
+  expect(slot.inspection.rpcCalls.map(call => call.method).filter(method => method !== "workflow_runs" && method !== "listPreferences")).toEqual(["bots_list"]);
 });
 
 it("creates sections explicitly through the menu and lets their draft be cancelled", async () => {
@@ -94,7 +94,7 @@ it("only lists linked projects and offers a searchable explicit existing-project
   expect((within(dialog).getByRole("combobox", { name: "Existing work role" }) as HTMLSelectElement).value).toBe("member");
   fireEvent.click(within(dialog).getByRole("button", { name: "Unlink Existing work" }));
   expect(within(dialog).getByText("No projects linked")).toBeTruthy();
-  expect(slot.inspection.rpcCalls.map(call => call.method).filter(method => method !== "workflow_runs")).toEqual(["bots_list"]);
+  expect(slot.inspection.rpcCalls.map(call => call.method).filter(method => method !== "workflow_runs" && method !== "listPreferences")).toEqual(["bots_list"]);
 });
 
 it("retains the inline new-project draft across tabs and links it as Owner only on bot Save", async () => {
@@ -120,7 +120,7 @@ it("does not create a project from an unsubmitted project draft", async () => {
   fireEvent.click(within(dialog).getByRole("button", { name: "Cancel project" }));
   expect((within(dialog).getByRole("button", { name: "Create bot" }) as HTMLButtonElement).disabled).toBe(false);
   fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
-  expect(slot.inspection.rpcCalls.map(call => call.method).filter(method => method !== "workflow_runs")).toEqual(["bots_list"]);
+  expect(slot.inspection.rpcCalls.map(call => call.method).filter(method => method !== "workflow_runs" && method !== "listPreferences")).toEqual(["bots_list"]);
 });
 
 it("keeps an explicitly created project if bot creation is cancelled, without linking it", async () => {

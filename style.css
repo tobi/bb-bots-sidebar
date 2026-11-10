@@ -395,3 +395,5 @@
 .bots-sidebar [data-thread-drop-target][data-drop-position="inside"] > .thread-row {
   outline: 1px solid var(--primary);
 }
+
+.chat-thread-list [data-conversation-dragging="true"] { opacity: 0.45; }

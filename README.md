@@ -1,10 +1,31 @@
 # Bots Sidebar
 
-Requires BB 0.46.1 or newer (Plugin SDK 0.6.49). Conversation menus and archive
-buttons use BB's native thread actions, including confirmation, Undo, and actions
-from other plugins. Rows follow native titles, links, draft indicators, plugin
-statuses, and keyboard shortcuts. Provider session options from the native new
-conversation composer are preserved when starting a bot conversation.
+Requires BB 0.49.0 and Plugin SDK 0.6.132. It keeps the Bots
+area and uses the standard Thread List interface for Chats.
+
+## Chats layout
+
+Chats excludes bot conversations. It supports project, machine, and chronological
+organization; updated, created, and alphabetical sorting; pins; custom sections;
+nested threads; drag-and-drop; shortcuts; native actions; and plugin row metadata.
+Open a group’s actions menu to use **Organize**, **Sort by**, or **Filter**.
+Use **Assign to bot…** in a chat’s menu, or drag it onto a bot.
+The Chats area remains collapsible and vertically resizable.
+
+Layout preferences are shared with BB’s installed **Thread List** plugin, which
+must stay enabled. The existing `bb thread-list prefs` commands still apply.
+Changes made in this sidebar sync across its windows. Changes made through the
+CLI or the original Thread List appear when this window regains focus, reconnects,
+or remounts. Existing bot settings, private data, and bindings retain the same
+`bots-sidebar` runtime ID.
+
+The Thread List source is copied from BB’s matching release. See
+[PROVENANCE.json](components/chat-thread-list/upstream/PROVENANCE.json) and its MIT
+license. Future BB updates may require refreshing this copy and its SDK types.
+
+Conversation menus and archive buttons use BB’s native thread actions, including
+confirmation, Undo, and actions from other plugins. Provider session options from
+the native new-conversation composer remain available for bot conversations.
 
 Bots are identities, not projects or working directories. A bot has a name,
 avatar, operating instructions, memory, and linked projects. Its state stays

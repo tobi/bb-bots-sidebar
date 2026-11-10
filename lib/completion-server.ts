@@ -13,7 +13,7 @@ const TURN_IN_FLIGHT = new Set(["active", "pending", "starting", "stopping"]);
 /** Live work, a pending question, or queued input keeps a conversation open. */
 export function sdkThreadBusy(thread: SdkThread): boolean {
   // Older hosts or partial rows may omit activity fields; absent means none.
-  const activity: Partial<SdkThread["activity"]> = thread.activity ?? {};
+  const activity: Partial<SdkThread["activity"]> & { activeGoalCount?: number } = thread.activity ?? {};
   const queued = thread.queuedWork ?? "none";
   return TURN_IN_FLIGHT.has(thread.status) || thread.hasPendingInteraction === true || queued !== "none"
     || (activity.activeWorkflowCount ?? 0) > 0 || (activity.activeBackgroundAgentCount ?? 0) > 0 || (activity.activeBackgroundCommandCount ?? 0) > 0

@@ -5,6 +5,13 @@ description: Use Bots Sidebar to find bots, understand their private state and p
 
 # Bots Sidebar
 
+Chats uses a copy of BB 0.49.0’s native Thread List. Bot conversations stay in
+Bots. Use a Chats group’s actions menu for Organize, Sort by, and Filter.
+`bb thread-list prefs list|get|set|reset` controls the shared layout preferences;
+keep the native `thread-list` plugin enabled. CLI changes reconcile when the
+window gains focus, reconnects, or remounts. The Chats context menu also offers
+Assign to bot. Private bot data and conversation bindings are unchanged.
+
 The runtime plugin ID is `bots-sidebar`; its CLI is `bb bots`.
 
 - Read public bot metadata with `bb bots list --json --limit 50 --offset 0`.

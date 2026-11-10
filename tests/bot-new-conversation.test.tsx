@@ -54,7 +54,7 @@ it("gives every row one inline + before its disclosure without opening main or e
   expect(disclosure.getAttribute("aria-expanded")).toBe("true");
   expect(slot.inspection.navigateCalls).toEqual([]); expect(slot.inspection.navigateCalls).toEqual([]); expect(onNavigate).not.toHaveBeenCalled();
   fireEvent.click(slot.getByRole("button", { name: "Close" }));
-  expect(slot.inspection.rpcCalls.every(call => ["bots_list", "bot_prepare", "workflow_runs"].includes(call.method))).toBe(true);
+  expect(slot.inspection.rpcCalls.every(call => ["listPreferences", "bots_list", "bot_prepare", "workflow_runs"].includes(call.method))).toBe(true);
 });
 
 it("keeps mouse button gestures out of native row dragging without blocking touch scrolling", async () => {

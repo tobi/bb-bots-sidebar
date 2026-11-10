@@ -61,7 +61,7 @@ it("drags a project-associated private chat onto a bot without prior membership 
   expect(document.querySelector(".conversation-drag-ghost")).not.toBeNull();
   up(); fireEvent.click(target.querySelector("button")!);
   await waitFor(() => expect(bindings).toContainEqual({ threadId: "chat", botId: "nova" }));
-  await waitFor(() => expect(slot.container.querySelector('.recent-row [data-sidebar-thread-id="chat"]')).toBeNull());
+  await waitFor(() => expect(slot.container.querySelector('.chat-thread-list [data-sidebar-thread-id="chat"]')).toBeNull());
   expect(slot.inspection.rpcCalls.filter(call => call.method === "conversation_assign")).toEqual([{ method: "conversation_assign", input: { threadId: "chat", botId: "nova", placeFirst: false } }]);
   expect(slot.inspection.rpcCalls.some(call => call.method === "bots_reorder" || call.method === "main_set")).toBe(false);
   expect(slot.inspection.navigateCalls).toEqual([]); expect(onNavigate).not.toHaveBeenCalled();
@@ -142,9 +142,10 @@ it("unfolds immediately after append succeeds and reveals the added row after a 
 });
 
 it("normal clicks still navigate, but touch scrolling never starts assignment dragging", async () => {
-  const { slot, source, target } = await mount();
+  const { slot, source, target, onNavigate } = await mount();
   down(source); hit = source; fireEvent.pointerUp(window, { pointerId: 1, clientX: 40, clientY: 300 }); fireEvent.click(source);
-  expect(slot.inspection.navigateCalls).toContainEqual({ method: "toThread", threadId: "chat", options: { split: false } });
+  expect(source.getAttribute("href")).toBe("/projects/project/threads/chat");
+  expect(onNavigate).toHaveBeenCalledOnce();
   down(source, "touch"); move(target); up();
   expect(document.querySelector(".conversation-drag-ghost")).toBeNull();
   expect(slot.inspection.rpcCalls.some(call => call.method === "conversation_assign")).toBe(false);
@@ -166,7 +167,7 @@ it("does not assign to a different bot moved beneath the pointer after the last 
 it("keeps the chat in place and shows the server error on failure", async () => {
   const { slot, source, target } = await mount(true); down(source); move(target); up();
   expect((await slot.findByRole("alert")).textContent).toContain("Assignment failed");
-  expect(slot.container.querySelector('.recent-row [data-sidebar-thread-id="chat"]')).not.toBeNull();
+  expect(slot.container.querySelector('.chat-thread-list [data-sidebar-thread-id="chat"]')).not.toBeNull();
   expect(document.querySelector(".conversation-drag-ghost")).toBeNull();
 });
 
